@@ -63,6 +63,8 @@ services:
   mongodb:
     image: mongo:${MONGODB_VERSION:-6.0}
     restart: always
+    ports:
+      - "27017:27017"
     volumes:
       - data-mongo:/data/db
       - ./.logs/apim-mongodb:/var/log/mongodb

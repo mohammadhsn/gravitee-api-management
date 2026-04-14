@@ -1,0 +1,106 @@
+/**
+ * Copyright (C) 2015 The Gravitee team (http://gravitee.io)
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *         http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+:host {
+  display: inline-flex;
+  align-items: center;
+}
+
+.language-switcher {
+  position: relative;
+}
+
+.language-switcher__toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: none;
+  border: 1px solid var(--gv-theme-neutral-color-dark, #bfbfbf);
+  border-radius: 4px;
+  padding: 4px 8px;
+  cursor: pointer;
+  color: var(--gv-theme-font-color-dark, #262626);
+  font-size: 13px;
+  line-height: 1;
+  transition: border-color 150ms;
+}
+
+.language-switcher__toggle:hover {
+  border-color: var(--gv-theme-color, #5a7684);
+}
+
+.language-switcher__icon {
+  flex-shrink: 0;
+}
+
+.language-switcher__label {
+  white-space: nowrap;
+}
+
+.language-switcher__arrow {
+  flex-shrink: 0;
+  transition: transform 150ms;
+}
+
+.language-switcher__arrow--open {
+  transform: rotate(180deg);
+}
+
+.language-switcher__dropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  list-style: none;
+  margin: 0;
+  padding: 4px 0;
+  background: var(--gv-theme-neutral-color-lightest, #fff);
+  border: 1px solid var(--gv-theme-neutral-color-dark, #bfbfbf);
+  border-radius: 4px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+  z-index: 200;
+  min-width: 120px;
+}
+
+.language-switcher__option {
+  display: block;
+  width: 100%;
+  padding: 6px 12px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  font-size: 13px;
+  color: var(--gv-theme-font-color-dark, #262626);
+  white-space: nowrap;
+}
+
+.language-switcher__option:hover {
+  background-color: var(--gv-theme-neutral-color, #f5f5f5);
+}
+
+.language-switcher__option--active {
+  font-weight: 600;
+  color: var(--gv-theme-color, #5a7684);
+}
+
+/* RTL: open dropdown to the left instead of right */
+:host-context([dir='rtl']) .language-switcher__dropdown {
+  right: auto;
+  left: 0;
+}
+
+:host-context([dir='rtl']) .language-switcher__option {
+  text-align: right;
+}

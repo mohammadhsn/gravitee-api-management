@@ -1,0 +1,1179 @@
+{
+  "analytics": {
+    "empty": "نتیجه‌ای برای نمایش وجود ندارد",
+    "timeframes": {
+      "day": "روز",
+      "days": "روز",
+      "hour": "ساعت",
+      "hours": "ساعت",
+      "minutes": "دقیقه"
+    }
+  },
+  "api": {
+    "createdAt": "ایجاد شده در",
+    "deployedAt": "استقرار یافته در",
+    "description": "توضیحات",
+    "endpoint": "مسیر زمینه",
+    "information": {
+      "about": "درباره",
+      "beFirstToRate": "اولین نفری باشید که امتیاز می‌دهید",
+      "categories": "دسته‌بندی‌ها",
+      "entrypoints": "آدرس دسترسی",
+      "labels": "برچسب‌ها",
+      "metrics": "متریک‌ها",
+      "ratings": "امتیازها",
+      "resources": "منابع"
+    },
+    "list": {
+      "connectedApps": "اپلیکیشن‌های متصل"
+    },
+    "name": "نام",
+    "owner": "مالک",
+    "publishedAt": "منتشر شده در",
+    "version": "نسخه"
+  },
+  "apiGeneral": {
+    "backToApplication": "بازگشت به اپلیکیشن \"{name}\"",
+    "backToCatalog": "بازگشت به کاتالوگ",
+    "backToCategory": "بازگشت به دسته‌بندی \"{name}\"",
+    "backToSearch": "بازگشت به نتایج جستجو",
+    "description": "توضیحات",
+    "giveRating": "نظر خود را به اشتراک بگذارید",
+    "rate": "امتیاز",
+    "rateComment": "توضیح دهید چرا",
+    "rateTitle": "آیا این API را پیشنهاد می‌کنید؟",
+    "rateTitlePlaceholder": "در یک کلمه",
+    "ratingAnswerCreated": "پاسخ شما ارسال شد",
+    "ratingAnswerDeleted": "پاسخ شما حذف شد",
+    "ratingCreated": "نظر شما ارسال شد",
+    "ratingDeleted": "نظر شما حذف شد",
+    "ratingUpdated": "با تشکر از نظر شما",
+    "ratingsSortOptions": {
+      "answers": "بیشترین نظر",
+      "best": "بهترین امتیاز",
+      "newest": "جدیدترین",
+      "oldest": "قدیمی‌ترین",
+      "worst": "کمترین امتیاز"
+    },
+    "showMore": "نمایش بیشتر",
+    "userRatings": "امتیازات کاربران"
+  },
+  "apiKeyMode": {
+    "description": "لطفا توجه داشته باشید که این انتخاب دائمی است",
+    "exclusive": {
+      "description": "یک کلید API جدید برای هر اشتراک جدید ایجاد می‌شود",
+      "title": "کلید API تولید شده"
+    },
+    "shared": {
+      "description": "همان کلید API برای هر اشتراک جدید استفاده می‌شود",
+      "title": "کلید API مشترک"
+    },
+    "title": "حالت مدیریت کلید API"
+  },
+  "apiSubscribe": {
+    "apps": {
+      "chooseApp": "یک اپلیکیشن انتخاب کنید",
+      "comment": "نظری برای مالک API بگذارید",
+      "connectedApps": "شما قبلاً <b>{count}</b> {count, plural, =0{} one{اپلیکیشن متصل} other{اپلیکیشن متصل}} با API <b>{apiName}</b> دارید.",
+      "createApp": "می‌خواهم یک اپلیکیشن ایجاد کنم",
+      "description": "اپلیکیشن پل ارتباطی بین شما به عنوان مصرف‌کننده و اشتراک در یک پلن API است.",
+      "missingClientId": "client_id موجود نیست",
+      "noAvailableApplications": "اپلیکیشن در دسترسی وجود ندارد."
+    },
+    "chooseApp": {
+      "title": "انتخاب اپلیکیشن"
+    },
+    "chooseKeyMode": {
+      "title": "انتخاب حالت کلید API"
+    },
+    "choosePlan": {
+      "title": "انتخاب پلن"
+    },
+    "connectedApps": "{count, plural, =0{} one{اپلیکیشن متصل} other{اپلیکیشن‌های متصل}} به {planName}",
+    "errors": {
+      "information": "خطایی در حین اشتراک رخ داد.",
+      "notConnected": "برای اشتراک در API وارد شوید یا حساب کاربری ایجاد کنید.",
+      "sorry": "متأسفیم"
+    },
+    "exit": "خروج",
+    "nextStep": "بعدی",
+    "plan": "پلن",
+    "plans": {
+      "description": "کاتالوگ ضروری برای سازماندهی APIهای من",
+      "sample": "می‌توانید استفاده از API را شروع کنید",
+      "title": "پلن‌ها و ویژگی‌ها",
+      "tcpSampleNote": "دستور واقعی ممکن است بر اساس پیکربندی امنیتی API متفاوت باشد. برای جزئیات بیشتر مستندات API را بررسی کنید."
+    },
+    "previousStep": "قبلی",
+    "success": {
+      "congratulations": "تبریک!",
+      "discoverApi": "شروع به کشف API کنید",
+      "goToHome": "بازگشت به صفحه اصلی",
+      "oauth2": "قبل از اینکه بتوانید این API را مصرف کنید، باید یک access_token از سرور احراز هویت دریافت کنید.",
+      "subscriptionAccepted": "اشتراک اپلیکیشن <b>{appName}</b> در پلن <b>{planName}</b> از API <b>{apiName}</b> پذیرفته شد!",
+      "subscriptionKey": "این کلید شخصی شما برای دسترسی به API است",
+      "subscriptionPending": "اشتراک اپلیکیشن <b>{appName}</b> در پلن <b>{planName}</b> از API <b>{apiName}</b> در حال تأیید است.",
+      "subscriptionRejected": "اشتراک اپلیکیشن <b>{appName}</b> در پلن <b>{planName}</b> از API <b>{apiName}</b> رد شد."
+    },
+    "validate": {
+      "askConfirmation": "اشتراک اپلیکیشن <b>{appName}</b> در پلن <b>{planName}</b> از API <b>{apiName}</b> در حال نهایی شدن است.",
+      "information": "{hasAutoValidation, select, true {تأیید خودکار است، پس از اتمام اشتراک می‌توانید از API استفاده کنید.} other {تأیید اشتراک شما نیاز به تأیید مالک دارد، به محض تأیید دسترسی شما ایمیلی دریافت خواهید کرد.}}",
+      "notCompleted": "اشتراک در API <b>{apiName}</b> کامل نیست، به مراحل قبلی برگردید و اطلاعات ناقص را وارد کنید.",
+      "subscription": "تأیید درخواست",
+      "title": "تأیید"
+    },
+    "planSubscription": {
+      "title": "پیکربندی اشتراک شما",
+      "channel": "کانال اشتراک را انتخاب کنید",
+      "entrypointId": "یک نقطه ورود انتخاب کنید",
+      "entrypointConfiguration": "نقطه ورود را پیکربندی کنید"
+    }
+  },
+  "application": {
+    "alerts": {
+      "add": {
+        "description": {
+          "label": "توضیحات",
+          "placeholder": "هشدار خود را توضیح دهید..."
+        },
+        "reset": "بازنشانی",
+        "success": "هشدار ایجاد شد",
+        "title": "افزودن هشدار",
+        "type": {
+          "placeholder": "یک نوع انتخاب کنید",
+          "status": {
+            "http_status": {
+              "placeholder": "وضعیت"
+            },
+            "percent": {
+              "placeholder": "۰..۱۰۰"
+            }
+          }
+        }
+      },
+      "delete": {
+        "success": "هشدار حذف شد"
+      },
+      "disabled": "لطفاً قبل از تعریف قوانین هشدار با مدیر خود تماس بگیرید.",
+      "information": "هر عضو اپلیکیشن که آدرس ایمیل خود را پیکربندی کرده باشد، اعلان دریافت خواهد کرد",
+      "list": {
+        "empty": "هشدار پیکربندی نشده",
+        "title": "لیست هشدارها"
+      },
+      "maximum": "به حداکثر ۱۰ هشدار رسیده‌اید",
+      "phrase": {
+        "api": {
+          "all": "همه APIها"
+        },
+        "last": "در طول آخرین",
+        "on": "هشدار روی",
+        "response_time": {
+          "second": "بیشتر از",
+          "third": "میلی‌ثانیه"
+        },
+        "status": {
+          "second": "بیشتر از",
+          "third": "٪"
+        },
+        "when": "وقتی که"
+      },
+      "timeUnits": {
+        "hours": "ساعت",
+        "minutes": "دقیقه",
+        "seconds": "ثانیه"
+      },
+      "type": {
+        "response_time": "میانگین زمان پاسخ (میلی‌ثانیه)",
+        "status": "وضعیت HTTP"
+      },
+      "update": {
+        "success": "هشدار به‌روزرسانی شد"
+      },
+      "webhook": {
+        "method": {
+          "title": "متد HTTP که برای فراخوانی URL در هر بار فعال شدن این هشدار استفاده می‌شود را انتخاب کنید"
+        },
+        "notifierWarning": "برای استفاده از اعلان‌های webhook، از مدیر خود بخواهید افزونه اعلان‌دهنده webhook را نصب کند",
+        "switch": {
+          "label": "اعلان Webhook",
+          "title": "اعلان‌های webhook را فعال کنید تا در هر بار فعال شدن این هشدار یک فراخوانی HTTP انجام شود"
+        },
+        "url": {
+          "placeholder": "https://my.domain/my/example/url",
+          "title": "URL مورد نظر برای فراخوانی در هر بار فعال شدن این هشدار را وارد کنید"
+        }
+      }
+    },
+    "analytics": {
+      "displayLogs": "مشاهده لاگ‌ها",
+      "exportCSV": "خروجی CSV",
+      "filters": {
+        "advanced": {
+          "hide": "پنهان کردن فیلترهای پیشرفته",
+          "show": "نمایش فیلترهای پیشرفته"
+        },
+        "api": {
+          "label": "API",
+          "title": "یک API انتخاب کنید"
+        },
+        "methods": {
+          "label": "متدهای HTTP",
+          "title": "یک متد HTTP انتخاب کنید"
+        },
+        "path": {
+          "label": "مسیر",
+          "title": "مسیر را انتخاب کنید"
+        },
+        "payloads": {
+          "label": "بدنه پیام",
+          "title": "متن برای جستجو در بدنه پیام‌ها"
+        },
+        "requestId": {
+          "label": "شناسه درخواست",
+          "title": "شناسه درخواست را وارد کنید"
+        },
+        "responseTimes": {
+          "label": "زمان پاسخ",
+          "title": "یک بازه زمان پاسخ انتخاب کنید"
+        },
+        "status": {
+          "label": "وضعیت HTTP",
+          "title": "وضعیت HTTP را انتخاب کنید"
+        },
+        "transactionId": {
+          "label": "شناسه تراکنش",
+          "title": "یک شناسه تراکنش انتخاب کنید"
+        }
+      },
+      "goToAlerts": "ایجاد هشدارها",
+      "search": "جستجو"
+    },
+    "change_background": "تغییر پس‌زمینه",
+    "change_picture": "تغییر تصویر",
+    "client_id": {
+      "label": "شناسه کلاینت",
+      "title": "شناسه کلاینت"
+    },
+    "client_secret": {
+      "label": "رمز کلاینت",
+      "title": "رمز کلاینت"
+    },
+    "delete": {
+      "cancel": "انصراف",
+      "message": "آیا مطمئن هستید که می‌خواهید این اپلیکیشن را حذف کنید؟",
+      "ok": "تأیید"
+    },
+    "description": {
+      "label": "هدف این اپلیکیشن را توضیح دهید",
+      "title": "توضیحات"
+    },
+    "domain": {
+      "label": "https://my-app.com",
+      "title": "دامنه مورد استفاده این اپلیکیشن"
+    },
+    "general": "عمومی",
+    "information": {
+      "createdDate": "ایجاد شده",
+      "lastUpdate": "به‌روزرسانی شده",
+      "owner": "مالک",
+      "title": "اطلاعات",
+      "type": "نوع"
+    },
+    "list": {
+      "connectedApis": "APIهای مشترک"
+    },
+    "log": {
+      "request": "درخواست",
+      "requestBody": "بدنه درخواست",
+      "requestContentLength": "اندازه محتوای ارسال شده",
+      "requestHeaders": "هدرهای درخواست HTTP",
+      "requestId": "شناسه درخواست",
+      "response": "پاسخ",
+      "responseBody": "بدنه پاسخ",
+      "responseContentLength": "اندازه محتوای دریافت شده",
+      "responseHeaders": "هدرهای پاسخ HTTP",
+      "responseTime": "زمان پاسخ",
+      "transactionId": "شناسه تراکنش"
+    },
+    "logs": {
+      "api": "API",
+      "date": "تاریخ",
+      "displayAnalytics": "مشاهده تحلیل‌ها",
+      "method": "متد",
+      "path": "مسیر",
+      "plan": "پلن",
+      "responseTime": "زمان پاسخ",
+      "status": "وضعیت",
+      "title": "لاگ‌ها"
+    },
+    "members": {
+      "add": {
+        "add": "افزودن",
+        "reset": "بازنشانی",
+        "role": {
+          "name": "نقش",
+          "placeholder": "یک نقش انتخاب کنید"
+        },
+        "success": "عضو جدید اضافه شد",
+        "title": "افزودن عضو",
+        "user": {
+          "name": "کاربر",
+          "placeholder": "جستجوی کاربر..."
+        }
+      },
+      "inherited": {
+        "groupTitle": "{nbMembers} عضو از گروه \"{groupName}\" به ارث رسیده",
+        "hide": "پنهان کردن",
+        "show": "نمایش",
+        "title": "اعضای به ارث رسیده"
+      },
+      "list": {
+        "member": "عضو",
+        "remove": {
+          "message": "آیا مطمئن هستید که می‌خواهید این عضو را حذف کنید؟",
+          "success": "عضو حذف شد",
+          "title": "حذف عضو"
+        },
+        "role": "نقش",
+        "success": "نقش به‌روزرسانی شد",
+        "title": "لیست اعضا"
+      },
+      "transferOwnership": {
+        "confirm": {
+          "cancel": "انصراف",
+          "message": "این عمل قابل بازگشت نیست.<br/> مالک جدید <b>{name}</b> خواهد بود.<br/> شما به لیست اپلیکیشن‌ها هدایت خواهید شد.",
+          "ok": "متوجه هستم، این اپلیکیشن را انتقال بده"
+        },
+        "currentPrimaryOwnerNewRole": {
+          "name": "نقش جدید",
+          "placeholder": "نقش جدید برای مالک اصلی فعلی را انتخاب کنید"
+        },
+        "information": "دسترسی کامل به این اپلیکیشن را به کاربر دیگری بدهید.",
+        "newPrimaryOwner": {
+          "name": "مالک اصلی جدید",
+          "placeholder": "جستجوی مالک اصلی جدید..."
+        },
+        "reset": "بازنشانی",
+        "success": "مالک اصلی به‌روزرسانی شد",
+        "title": "انتقال مالکیت",
+        "transfer": "انتقال"
+      }
+    },
+    "metadata": {
+      "format": "قالب",
+      "key": "کلید",
+      "list": {
+        "add": {
+          "title": "افزودن"
+        },
+        "remove": {
+          "title": "حذف"
+        },
+        "title": "لیست متادیتا"
+      },
+      "name": "نام",
+      "reset": {
+        "title": "بازنشانی"
+      },
+      "update": {
+        "success": "به‌روزرسانی با موفقیت انجام شد",
+        "title": "به‌روزرسانی"
+      },
+      "value": "مقدار"
+    },
+    "name": {
+      "label": "نام اپلیکیشن",
+      "title": "نام اپلیکیشن"
+    },
+    "notifications": {
+      "NEW_SUPPORT_TICKET": {
+        "description": "وقتی تیکتی مرتبط با اپلیکیشن شما ایجاد شود، اعلان دریافت خواهید کرد",
+        "label": "تیکت پشتیبانی جدید"
+      },
+      "SUBSCRIPTION": {
+        "title": "اشتراک"
+      },
+      "SUBSCRIPTION_ACCEPTED": {
+        "description": "وقتی اشتراکی پذیرفته شود، اعلان دریافت خواهید کرد",
+        "label": "اشتراک پذیرفته شد"
+      },
+      "SUBSCRIPTION_CLOSED": {
+        "description": "وقتی اشتراکی بسته شود، اعلان دریافت خواهید کرد",
+        "label": "اشتراک بسته شد"
+      },
+      "SUBSCRIPTION_NEW": {
+        "description": "وقتی اشتراک جدیدی درخواست شود، اعلان دریافت خواهید کرد",
+        "label": "اشتراک جدید"
+      },
+      "SUBSCRIPTION_PAUSED": {
+        "description": "وقتی اشتراکی متوقف شود، اعلان دریافت خواهید کرد",
+        "label": "توقف اشتراک"
+      },
+      "SUBSCRIPTION_REJECTED": {
+        "description": "وقتی اشتراکی رد شود، اعلان دریافت خواهید کرد",
+        "label": "اشتراک رد شد"
+      },
+      "SUBSCRIPTION_RESUMED": {
+        "description": "وقتی اشتراکی پس از توقف دوباره فعال شود، اعلان دریافت خواهید کرد",
+        "label": "اشتراک دوباره فعال شد"
+      },
+      "SUBSCRIPTION_TRANSFERRED": {
+        "description": "وقتی اشتراکی منتقل شود، اعلان دریافت خواهید کرد",
+        "label": "اشتراک منتقل شد"
+      },
+      "SUPPORT": {
+        "title": "پشتیبانی"
+      },
+      "header": "می‌خواهید در چه رویدادهایی مشترک شوید؟",
+      "saveSuccess": "اشتراک‌های اعلان شما برای این اپلیکیشن ذخیره شد",
+      "title": "اشتراک‌ها"
+    },
+    "oauth2": "یکپارچه‌سازی OAuth2",
+    "renewSecret": {
+      "label": "تجدید رمز",
+      "message": "آیا مطمئن هستید که می‌خواهید رمز اپلیکیشن خود را تجدید کنید؟<br/> با تجدید رمز، دیگر نمی‌توانید توکن‌های دسترسی جدید تولید کنید و API را فراخوانی کنید."
+    },
+    "shared-key": {
+      "info": {
+        "created_at": "ایجاد شده در",
+        "end_at": "پایان در",
+        "title": "کلید API"
+      },
+      "message": "اپلیکیشن شما پیکربندی شده است تا از همان کلید API برای همه اشتراک‌هایش استفاده کند.",
+      "no-key": {
+        "create": "می‌توانید با کلیک روی \"تجدید\" یک کلید جدید ایجاد کنید.",
+        "message": "متأسفانه هیچ کلید API مشترک معتبری یافت نشد.",
+        "recommendation": "لطفاً با مالک اپلیکیشن تماس بگیرید."
+      },
+      "renew": {
+        "message": "آیا مطمئن هستید که می‌خواهید این کلید API مشترک را تجدید کنید؟",
+        "success": "کلید API مشترک با موفقیت تجدید شد",
+        "title": "تجدید"
+      },
+      "revoke": {
+        "message": "آیا مطمئن هستید که می‌خواهید این کلید API مشترک را لغو کنید؟",
+        "success": "کلید API مشترک با موفقیت لغو شد",
+        "title": "لغو"
+      },
+      "title": "اپلیکیشن با کلید API مشترک"
+    },
+    "subscriptions": {
+      "api": "API",
+      "apiKey": {
+        "created_at": "تولید شده در",
+        "end_at": "پایان در",
+        "ended_at": "تکمیل شده در",
+        "expired": {
+          "hide": "پنهان کردن کلیدهای منقضی",
+          "show": "نمایش کلیدهای منقضی"
+        },
+        "revoke": {
+          "label": "لغو",
+          "message": "آیا مطمئن هستید که می‌خواهید این کلید API را لغو کنید؟"
+        },
+        "success": {
+          "revoke": "کلید API شما با موفقیت لغو شد"
+        },
+        "title": "کلیدهای API:"
+      },
+      "close": {
+        "message": "آیا مطمئن هستید که می‌خواهید این اشتراک را ببندید؟",
+        "title": "بستن"
+      },
+      "created_at": "تاریخ اشتراک",
+      "end_at": "پایان در",
+      "filters": {
+        "api": {
+          "label": "یک API انتخاب کنید",
+          "title": "API"
+        },
+        "status": {
+          "label": "یک وضعیت انتخاب کنید",
+          "title": "وضعیت"
+        }
+      },
+      "navigateToApi": "رفتن به API",
+      "plan": "پلن",
+      "processed_at": "تاریخ پردازش",
+      "renew": {
+        "message": "آیا مطمئن هستید که می‌خواهید این اشتراک را تجدید کنید؟",
+        "title": "تجدید"
+      },
+      "security_type": "نوع امنیتی",
+      "selected": {
+        "title": "اطلاعات اشتراک"
+      },
+      "start_at": "تاریخ شروع",
+      "status": "وضعیت",
+      "subscribed_by": "مشترک شده توسط",
+      "success": {
+        "close": "اشتراک شما با موفقیت بسته شد",
+        "renew": "اشتراک شما با موفقیت تجدید شد"
+      },
+      "title": "اشتراک‌ها"
+    },
+    "success": {
+      "delete": "اپلیکیشن شما با موفقیت حذف شد",
+      "renewSecret": "رمز اپلیکیشن شما با موفقیت تجدید شد",
+      "save": "اپلیکیشن شما با موفقیت به‌روزرسانی شد"
+    },
+    "type": {
+      "label": "نوع اپلیکیشن",
+      "title": "نوع اپلیکیشن"
+    },
+    "types": "{type, select, BACKEND_TO_BACKEND{بک‌اند به بک‌اند} NATIVE{نیتیو} WEB{وب} BROWSER{مرورگر} SIMPLE{ساده} other{ساده}}"
+  },
+  "applicationCreation": {
+    "apiKeyMode": {
+      "title": "حالت"
+    },
+    "exit": "خروج",
+    "general": {
+      "description": {
+        "label": "توضیحات",
+        "placeholder": "هدف آن را توضیح دهید"
+      },
+      "domain": {
+        "label": "دامنه مورد استفاده اپلیکیشن",
+        "placeholder": "https://my-app.com"
+      },
+      "image": "تصویر اپلیکیشن",
+      "name": {
+        "label": "نام اپلیکیشن",
+        "placeholder": "اپلیکیشن خود را نامگذاری کنید"
+      }
+    },
+    "planSubscription": {
+      "title": "پیکربندی اشتراک شما",
+      "channel": "کانال اشتراک را انتخاب کنید",
+      "entrypointId": "یک نقطه ورود انتخاب کنید",
+      "entrypointConfiguration": "نقطه ورود را پیکربندی کنید"
+    },
+    "security": {
+      "description": "به دلایل امنیتی، لطفاً فقط انواعی که نیاز دارید را تعریف کنید.",
+      "label": "انواع دسترسی مجاز برای کلاینت."
+    },
+    "step": {
+      "apiKeyMode": "کلید API",
+      "createApp": "ایجاد اپلیکیشن",
+      "general": "عمومی",
+      "next": "بعدی",
+      "previous": "قبلی",
+      "security": "امنیت",
+      "subscription": "اشتراک",
+      "validate": "تأیید"
+    },
+    "subscription": {
+      "api": {
+        "description": "یک API برای اپلیکیشن خود پیدا کنید"
+      },
+      "comment": "نظر",
+      "description": "{count, plural, =0{بدون اشتراک} one{فقط یک اشتراک} other{{count} اشتراک}}",
+      "disabledPlans": "برای اشتراک در {count, plural, =0{پلن غیرفعال} one{پلن غیرفعال} other{پلن‌های غیرفعال}} یک clientID لازم است",
+      "noPlan": "پلنی برای این API در دسترس نیست",
+      "plan": {
+        "description": "APIها را برای اپلیکیشن خود پیدا کنید و پلن‌هایی که می‌خواهید مشترک شوید را اضافه کنید"
+      },
+      "remove": "حذف",
+      "resubscribe": "تلاش مجدد",
+      "subscribe": "اشتراک",
+      "validation": {
+        "auto": "خودکار",
+        "manual": "دستی",
+        "type": "تأیید"
+      }
+    },
+    "validation": {
+      "confirm": "اپلیکیشن \"{name}\" آماده است!",
+      "error": {
+        "description": "خطایی در حین ایجاد اپلیکیشن رخ داد.",
+        "title": "متأسفیم"
+      },
+      "pending": {
+        "description": "اطلاعاتی برای ایجاد اپلیکیشن شما ناقص است.<br/> لطفاً بررسی کنید که همه مراحل تأیید شده باشند.",
+        "title": "تقریباً تمام شد"
+      },
+      "subscriptionTitle": "درخواست اشتراک"
+    }
+  },
+  "applicationType": {
+    "backend_to_backend": {
+      "description": "اپلیکیشن‌های ماشین به ماشین (اسکریپت‌ها، دیمون‌ها، CLIها) که از DCR برای دسترسی به API استفاده می‌کنند.",
+      "title": "بک‌اند به بک‌اند"
+    },
+    "browser": {
+      "description": "اپلیکیشن‌های JS فرانت‌اند (React، Angular، Vue) که از DCR برای احراز هویت استفاده می‌کنند.",
+      "title": "SPA"
+    },
+    "native": {
+      "description": "اپلیکیشن‌های موبایل و دسکتاپ (iOS، Android) که از طریق DCR احراز هویت می‌کنند.",
+      "title": "نیتیو"
+    },
+    "security": {
+      "additionalClientMetadata": {
+        "add": "افزودن متادیتای کلاینت",
+        "description": "کلید متادیتای اضافی برای ارسال به سرور احراز هویت (مثلاً policy_uri، tos_uri، ...)",
+        "key": "کلید متادیتا",
+        "remove": "حذف این متادیتا",
+        "value": "مقدار متادیتا",
+        "valueDescription": "مقدار کلید متادیتا"
+      },
+      "authorization_code": {
+        "description": " ",
+        "title": "کد مجوز"
+      },
+      "clientId": {
+        "description": "Client_id اپلیکیشن. این فیلد برای اشتراک در انواع خاصی از پلن API (OAuth2، JWT) لازم است.",
+        "label": "شناسه کلاینت"
+      },
+      "clientCertificate": {
+        "description": "client_certificate اپلیکیشن. این فیلد برای اشتراک در پلن‌های mTLS لازم است.",
+        "label": "گواهی کلاینت (فقط PEM)"
+      },
+      "client_credentials": {
+        "description": " ",
+        "title": "اعتبارنامه کلاینت"
+      },
+      "implicit": {
+        "description": " ",
+        "title": "ضمنی"
+      },
+      "implicit_hybrid": {
+        "description": "هیبرید",
+        "title": "ضمنی"
+      },
+      "password": {
+        "description": "توسط مالک منبع ارائه شده",
+        "title": "رمز عبور"
+      },
+      "redirectUris": {
+        "description": "URI که سرور احراز هویت پاسخ‌های OAuth را به آن ارسال می‌کند",
+        "label": "URIهای تغییر مسیر"
+      },
+      "refresh_token": {
+        "description": " ",
+        "title": "توکن تازه‌سازی"
+      },
+      "simple": {
+        "description": "نوع اپلیکیشن (موبایل، وب، ...)",
+        "title": "نوع"
+      }
+    },
+    "simple": {
+      "description": "یک کلاینت مستقل که client_id خود را مدیریت می‌کنید. بدون DCR.",
+      "title": "ساده"
+    },
+    "web": {
+      "description": "اپلیکیشن‌های وب سمت سرور (مثلاً .NET، Java) که کاربران را از طریق DCR احراز هویت می‌کنند.",
+      "title": "وب"
+    }
+  },
+  "applications": {
+    "subscribers": {
+      "title": "مشاهده {count, plural, one{اشتراک} other{اشتراک‌های}} اپلیکیشن {appName}"
+    },
+    "title": "اپلیکیشن‌ها"
+  },
+  "catalog": {
+    "ALL": {
+      "emptyMessage": "پورتال هیچ API‌ای ندارد"
+    },
+    "FEATURED": {
+      "emptyMessage": "API ویژه‌ای وجود ندارد"
+    },
+    "STARRED": {
+      "emptyMessage": "هنوز امتیازی وجود ندارد"
+    },
+    "TRENDINGS": {
+      "emptyMessage": "هنوز API پرطرفداری وجود ندارد"
+    },
+    "categories": {
+      "emptyMessage": "دسته‌بندی هیچ API‌ای ندارد"
+    },
+    "category": {
+      "documentation": {
+        "hide": "پنهان کردن مستندات",
+        "show": "نمایش مستندات"
+      }
+    },
+    "defaultCategory": "همه APIها",
+    "display": {
+      "cards": "نمایش کارت‌ها",
+      "list": "نمایش لیست"
+    },
+    "filter": "فیلتر نتایج",
+    "othersApi": {
+      "subTitle": "APIهای مختلف در عناوین این ماه را کشف کنید",
+      "title": "سایر APIها"
+    },
+    "search": "جستجوی API",
+    "searchAdvanced": "name:\"My api *\" ownerName:admin"
+  },
+  "categories": {
+    "empty": "دسته‌بندی وجود ندارد",
+    "title": "دسته‌بندی‌ها"
+  },
+  "common": {
+    "cancel": "انصراف",
+    "date": {
+      "range": {
+        "title": "یک بازه زمانی انتخاب کنید"
+      }
+    },
+    "delete": "حذف",
+    "filters": {
+      "title": "فیلترها"
+    },
+    "general_conditions": {
+      "accept": "شرایط و ضوابط را می‌پذیرم",
+      "title": "شرایط عمومی استفاده"
+    },
+    "ok": "تأیید",
+    "options": "گزینه‌ها",
+    "reset": "بازنشانی",
+    "save": "ذخیره",
+    "search": "جستجو",
+    "status": {
+      "ACCEPTED": "پذیرفته شده",
+      "CLOSED": "بسته شده",
+      "PAUSED": "متوقف شده",
+      "PENDING": "در انتظار",
+      "REJECTED": "رد شده"
+    },
+    "update": "به‌روزرسانی"
+  },
+  "cookies": {
+    "actions": {
+      "decline": "رد می‌کنم",
+      "ok": "متوجه شدم"
+    },
+    "confirmation": "اگر رد کنید، داده‌های مرور شما هنگام بازدید از این وب‌سایت جمع‌آوری نخواهد شد. علاوه بر کوکی‌های مورد نیاز وب‌سایت، فقط یک کوکی در مرورگر شما ایجاد می‌شود تا عدم تمایل شما به ردیابی را به خاطر بسپارد.",
+    "googleAnalyticsDescription": "اجازه کوکی‌ها برای Google Analytics",
+    "information": {
+      "common": "این وب‌سایت کوکی‌هایی را در رایانه شما ذخیره می‌کند. این کوکی‌ها برای ذخیره ترجیحات و اطلاعات اتصال شما استفاده می‌شوند. این به ما امکان می‌دهد تجربه مرور شما را بهبود بخشیم.",
+      "withAnalytics": "تحلیل‌ها و متریک‌های مربوط به بازدیدکنندگان نیز ممکن است جمع‌آوری شود (با استفاده از <a href=\"https://policies.google.com/privacy\" target=\"_blank\">Google Analytics</a>)."
+    },
+    "manage": "می‌توانید ترجیحات کوکی خود را اینجا مدیریت کنید.",
+    "success": {
+      "disable": "کوکی {cookieName} غیرفعال شد",
+      "enable": "کوکی {cookieName} فعال شد"
+    },
+    "title": "تنظیمات کوکی"
+  },
+  "dashboard": {
+    "applications": {
+      "create": "ایجاد یک اپلیکیشن",
+      "createFirst": "اولین اپلیکیشن خود را ایجاد کنید",
+      "list": "مشاهده اپلیکیشن‌های شما",
+      "title": "اپلیکیشن‌های شما"
+    },
+    "empty": "شما هنوز اپلیکیشنی ندارید",
+    "noApplicationPermission": "چیزی در داشبورد شما نیست",
+    "stats": {
+      "avg": "میانگین زمان پاسخ",
+      "max": "حداکثر زمان پاسخ",
+      "min": "حداقل زمان پاسخ",
+      "ms": "میلی‌ثانیه",
+      "rph": "درخواست در ساعت",
+      "rpm": "درخواست در دقیقه",
+      "rps": "درخواست در ثانیه",
+      "total": "کل"
+    },
+    "subscriptions": {
+      "api": "API",
+      "application": "اپلیکیشن",
+      "list": {
+        "empty": "بدون اشتراک"
+      },
+      "plan": "پلن",
+      "subtitle": "یک اشتراک انتخاب کنید تا فعالیت هفته گذشته را ببینید",
+      "title": "اشتراک‌های شما"
+    },
+    "welcome": "خوش آمدید {username}،"
+  },
+  "errors": {
+    "clientRegistrationProvider": {
+      "exception": "خطایی هنگام اتصال به سرویس مدیریت دسترسی رخ داد"
+    },
+    "email": {
+      "required": "لطفاً برای استفاده از فرم تماس یک ایمیل پیکربندی کنید"
+    },
+    "forbidden": "شما دسترسی کافی برای این منبع ندارید",
+    "metadata": {
+      "exists": "متادیتای \"{metadata}\" قبلاً وجود دارد"
+    },
+    "passwordFormat": {
+      "invalid": "رمز عبور طبق قوانین سیاست معتبر نیست"
+    },
+    "plan": {
+      "general_conditions_accept": "پلن {plan} نیاز به پذیرش شرایط عمومی استفاده دارد.",
+      "general_conditions_revision": "شرایط استفاده پلن {plan} تغییر کرده است.",
+      "general_conditions_status": "پلن {plan} به صفحه شرایط استفاده منتشر نشده ارجاع می‌دهد.",
+      "notSubscribable": "برای اشتراک در پلن OAuth2 یا JWT یک client_id لازم است.",
+      "notSubscribableWithSharedApiKey": "نمی‌توانید در حالت کلید API مشترک در پلن کلید API دوم در همان API مشترک شوید.",
+      "otherOAuth2OrJWTSubscribed": "یک پلن OAuth2 یا JWT دیگر قبلاً توسط همان اپلیکیشن مشترک شده است",
+      "subscribed": "قبلاً یک اشتراک در انتظار یا پذیرفته شده برای این پلن وجود دارد."
+    },
+    "server": {
+      "unavailable": "سرور در دسترس نیست یا اتصال قطع شده"
+    },
+    "support": {
+      "disabled": "فرم تماس در حال حاضر در دسترس نیست"
+    },
+    "unexpected": "خطای غیرمنتظره‌ای رخ داد",
+    "user": {
+      "exists": "کاربری با این ایمیل وجود دارد: {user}",
+      "finalized": "حساب قبلاً نهایی شده است",
+      "resetpassword": "بازنشانی رمز عبور قبلاً درخواست شده، لطفاً ایمیل‌های خود را بررسی کنید و چند دقیقه قبل از تلاش جدید صبر کنید."
+    }
+  },
+  "footer": {
+    "rights": "© تمامی حقوق محفوظ است"
+  },
+  "gv-card-full": {
+    "empty": "API‌ای برای نمایش وجود ندارد",
+    "error": "خطایی هنگام بارگذاری API رخ داد"
+  },
+  "gv-card": {
+    "empty": "API‌ای برای نمایش وجود ندارد",
+    "error": "خطایی هنگام بارگذاری API رخ داد"
+  },
+  "gv-category-list": {
+    "error": "خطایی هنگام بارگذاری لیست رخ داد"
+  },
+  "gv-category": {
+    "empty": "دسته‌بندی برای نمایش وجود ندارد",
+    "error": "خطایی هنگام بارگذاری دسته‌بندی رخ داد"
+  },
+  "gv-chart": {
+    "empty": "نتیجه‌ای برای نمایش وجود ندارد",
+    "error": "خطایی هنگام بارگذاری داده‌ها رخ داد"
+  },
+  "gv-code": {
+    "copy": "کپی به کلیپ‌بورد"
+  },
+  "gv-confirm": {
+    "cancel": "انصراف",
+    "ok": "تأیید"
+  },
+  "gv-contact": {
+    "apis": {
+      "label": "یک API پیدا کنید",
+      "title": "مرتبط کردن با یک API"
+    },
+    "applications": {
+      "label": "یک اپلیکیشن پیدا کنید",
+      "title": "مرتبط کردن با یک اپلیکیشن"
+    },
+    "button": "ارسال درخواست",
+    "content": {
+      "label": "درخواست خود را توضیح دهید...",
+      "title": "درخواست شما"
+    },
+    "receiveCopy": "دریافت کپی از طریق ایمیل",
+    "subject": {
+      "label": "موضوع را توضیح دهید...",
+      "title": "موضوع"
+    },
+    "success": "درخواست شما به مالک ارسال شد",
+    "title": "درخواست شما"
+  },
+  "gv-create-application": {
+    "createApplication": "ایجاد یک اپلیکیشن"
+  },
+  "gv-date-picker": {
+    "endDate": "تاریخ پایان",
+    "format": "yyyy/MM/dd",
+    "now": "اکنون",
+    "ok": "تأیید",
+    "startDate": "تاریخ شروع",
+    "today": "امروز"
+  },
+  "gv-documentation": {
+    "empty": "در حال حاضر مستنداتی وجود ندارد"
+  },
+  "gv-file-upload": {
+    "chooseAnotherFile": "فایل دیگری انتخاب کنید",
+    "chooseFile": "یک فایل انتخاب کنید",
+    "error": {
+      "maxSize": "حجم فایل از حد مجاز بیشتر است",
+      "typeNotAllowed": "این نوع فایل مجاز نیست"
+    },
+    "orDragIt": "یا اینجا رها کنید.",
+    "removePicture": "حذف تصویر"
+  },
+  "gv-header": {
+    "empty": "API‌ای برای نمایش وجود ندارد",
+    "error": "خطایی هنگام بارگذاری API رخ داد",
+    "subscribe": "اشتراک"
+  },
+  "gv-input": {
+    "copy": "کپی به کلیپ‌بورد",
+    "search": "جستجو"
+  },
+  "gv-list": {
+    "error": "خطایی هنگام بارگذاری لیست رخ داد",
+    "paused": "متوقف شده",
+    "pending": "در انتظار"
+  },
+  "gv-markdown-toc": {
+    "title": "فهرست مطالب"
+  },
+  "gv-metrics": {
+    "health": "سلامت",
+    "hits": "{count, plural, =0{بازدید} one{بازدید} other{بازدید}} (۷ روز گذشته)",
+    "subscribers": "{count, plural, =0{مشترک} one{مشترک} other{مشترک}}"
+  },
+  "gv-page": {
+    "swagger": {
+      "badFormat": "صفحه‌ای که می‌خواهید مشاهده کنید در قالب swagger / OpenAPI نیست"
+    }
+  },
+  "gv-pagination": {
+    "next": "بعدی",
+    "previous": "قبلی"
+  },
+  "gv-plans": {
+    "characteristics": {
+      "empty": "اطلاعاتی درباره این پلن وجود ندارد"
+    },
+    "empty": {
+      "redirect": "می‌خواهم برای اطلاعات بیشتر با مالک تماس بگیرم",
+      "title": "API در حال حاضر پلن در دسترسی ندارد."
+    },
+    "error": "خطایی هنگام بارگذاری پلن‌ها رخ داد.",
+    "security": {
+      "apiKey": "کلید شخصی",
+      "jwt": "Json Web Token",
+      "keyLess": "بدون کلید",
+      "oauth2": "Oauth 2"
+    },
+    "validation": {
+      "auto": "تأیید خودکار",
+      "manual": "تأیید دستی"
+    }
+  },
+  "gv-promote": {
+    "empty": "API‌ای برای نمایش وجود ندارد",
+    "error": "خطایی هنگام بارگذاری API رخ داد",
+    "view": "مشاهده API"
+  },
+  "gv-rating-list": {
+    "answerLabel": "افزودن پاسخ",
+    "cancel": "انصراف",
+    "confirmAnswerDelete": "آیا مطمئن هستید که می‌خواهید پاسخ را حذف کنید؟",
+    "confirmRatingDelete": "آیا مطمئن هستید که می‌خواهید امتیاز را حذف کنید؟",
+    "deleteAnswer": "حذف پاسخ",
+    "deleteRating": "حذف امتیاز",
+    "reply": "پاسخ",
+    "send": "ارسال"
+  },
+  "gv-rating": {
+    "description-1": "بد",
+    "description-2": "دوست ندارم",
+    "description-3": "دوست دارم",
+    "description-4": "عالی",
+    "description-5": "عالی‌ترین",
+    "note": "امتیاز",
+    "notes": "امتیازها"
+  },
+  "gv-row": {
+    "empty": "نتیجه‌ای برای نمایش وجود ندارد",
+    "error": "خطایی هنگام بارگذاری API رخ داد"
+  },
+  "gv-stats": {
+    "empty": "نتیجه‌ای برای نمایش وجود ندارد",
+    "error": "خطایی هنگام بارگذاری داده‌ها رخ داد"
+  },
+  "gv-stepper": {
+    "error": "خطایی هنگام بارگذاری مراحل رخ داد"
+  },
+  "gv-table": {
+    "accepted": "پذیرفته شده",
+    "empty": "نتیجه‌ای برای نمایش وجود ندارد",
+    "error": "خطایی هنگام بارگذاری داده‌ها رخ داد",
+    "paused": "متوقف شده",
+    "pending": "در انتظار",
+    "rejected": "رد شده"
+  },
+  "homepage": {
+    "apis": "APIهای ویژه",
+    "explore": "کاوش APIها",
+    "signup": "ثبت نام",
+    "title": "قدرت APIهای خود را آزاد کنید."
+  },
+  "login": {
+    "button": "ورود",
+    "notification": {
+      "error": "نام کاربری یا رمز عبور نامعتبر"
+    },
+    "password": "رمز عبور",
+    "resetPassword": "بازنشانی رمز عبور",
+    "signup": {
+      "link": "ثبت نام!",
+      "text": "هنوز حساب کاربری ندارید؟"
+    },
+    "title": "شما کی هستید؟",
+    "username": "نام کاربری"
+  },
+  "notFound": {
+    "goHome": "رفتن به صفحه اصلی",
+    "message": "صفحه‌ای که به دنبال آن هستید به نظر وجود ندارد یا دیگر وجود ندارد. نگران نباشید، هنوز چیزی از دست نرفته!",
+    "title": "صفحه یافت نشد"
+  },
+  "register": {
+    "field": {
+      "address": "آدرس",
+      "city": "شهر",
+      "country": "کشور",
+      "job_position": "سمت",
+      "organization": "شرکت",
+      "telephone_number": "شماره تلفن",
+      "zip_code": "کد پستی"
+    }
+  },
+  "registration": {
+    "backHome": "بازگشت به پورتال",
+    "backLogin": "بازگشت به ورود",
+    "button": "ثبت نام",
+    "email": "ایمیل",
+    "firstname": "نام",
+    "lastname": "نام خانوادگی",
+    "success": {
+      "message": "ایمیلی به این آدرس ارسال شد: {email}",
+      "title": "ثبت نام تأیید شد!"
+    },
+    "title": "ایجاد حساب کاربری"
+  },
+  "registrationConfirmation": {
+    "backHome": "بازگشت به پورتال",
+    "backLogin": "بازگشت به ورود",
+    "backRegistration": "بازگشت به ثبت نام",
+    "button": "تأیید",
+    "confirmedPassword": "تأیید رمز عبور",
+    "email": "ایمیل",
+    "firstname": "نام",
+    "lastname": "نام خانوادگی",
+    "password": "یک رمز عبور انتخاب کنید",
+    "success": {
+      "message": "ایجاد حساب کاربری شما تأیید شد",
+      "title": "ثبت نام موفق"
+    },
+    "title": "تأیید ثبت نام",
+    "tokenExpired": "درخواست ایجاد حساب کاربری شما منقضی شده است"
+  },
+  "resetPassword": {
+    "backHome": "بازگشت به پورتال",
+    "backLogin": "بازگشت به ورود",
+    "button": "بازنشانی رمز عبور",
+    "success": {
+      "message": "اگر حساب وجود داشته باشد ایمیلی ارسال خواهد شد.",
+      "title": "بازنشانی رمز عبور تأیید شد!"
+    },
+    "title": "بازنشانی رمز عبور",
+    "username": "نام کاربری"
+  },
+  "resetPasswordConfirmation": {
+    "backHome": "بازگشت به پورتال",
+    "backLogin": "بازگشت به ورود",
+    "backResetPassword": "بازگشت به بازنشانی رمز عبور",
+    "button": "تأیید",
+    "confirmedPassword": "تأیید رمز عبور",
+    "email": "ایمیل",
+    "firstname": "نام",
+    "lastname": "نام خانوادگی",
+    "password": "یک رمز عبور انتخاب کنید",
+    "success": {
+      "message": "رمز عبور شما تغییر کرد",
+      "title": "بازنشانی موفق"
+    },
+    "title": "انتخاب رمز عبور",
+    "tokenExpired": "درخواست بازنشانی رمز عبور شما منقضی شده است"
+  },
+  "route": {
+    "alerts": "هشدارها",
+    "analyticsApplication": "تحلیل‌ها",
+    "applicationCreation": "ایجاد یک اپلیکیشن",
+    "applications": "اپلیکیشن‌ها",
+    "catalog": "کاتالوگ",
+    "catalogAll": "همه APIها",
+    "catalogApi": "اطلاعات عمومی",
+    "catalogApiContact": "تماس",
+    "catalogApiDocumentation": "مستندات",
+    "catalogApiSubscribe": "اشتراک",
+    "catalogCategories": "دسته‌بندی‌ها",
+    "catalogCategory": "دسته‌بندی",
+    "catalogFeatured": "ویژه",
+    "catalogStarred": "ستاره‌دار",
+    "catalogTrending": "پرطرفدار",
+    "contact": "تماس",
+    "cookies": "تنظیمات کوکی",
+    "dashboard": "داشبورد",
+    "homepage": "صفحه اصلی",
+    "login": "ورود",
+    "logout": "خروج",
+    "logsApplication": "لاگ‌ها",
+    "management": "مدیریت",
+    "members": "اعضا",
+    "metadata": "متادیتا",
+    "myApplications": "اپلیکیشن‌های من",
+    "mySubscriptions": "اشتراک‌های من",
+    "notFound": "صفحه یافت نشد",
+    "notifications": "اعلان‌ها",
+    "subscriptions": "اشتراک‌ها",
+    "tickets": "تیکت‌ها",
+    "user": "حساب من"
+  },
+  "search": {
+    "results": {
+      "label": "{count, plural, =0{بدون نتیجه} one{{count} نتیجه} other{{count} نتیجه}}"
+    }
+  },
+  "site": {
+    "title": "پورتال توسعه‌دهندگان"
+  },
+  "subscriptions": {
+    "applications": {
+      "init": "شما هیچ اپلیکیشنی ندارید",
+      "name": "نام",
+      "navigate": "رفتن به اپلیکیشن",
+      "owner": "مالک",
+      "title": "اپلیکیشن‌ها"
+    },
+    "subscriptions": {
+      "api": "API",
+      "empty": "اشتراکی برای این اپلیکیشن وجود ندارد",
+      "end_date": "تاریخ پایان",
+      "init": "روی یک اپلیکیشن کلیک کنید تا اشتراک‌های آن را ببینید",
+      "navigate": "رفتن به اشتراک",
+      "plan": "پلن",
+      "start_date": "تاریخ شروع",
+      "title": "اشتراک‌ها"
+    },
+    "title": "اشتراک‌های من"
+  },
+  "tickets": {
+    "api": "API",
+    "application": "اپلیکیشن",
+    "content": "محتوا",
+    "date": "تاریخ",
+    "subject": "موضوع",
+    "title": "تیکت‌ها"
+  },
+  "user": {
+    "account": {
+      "success": "حساب کاربری شما با موفقیت به‌روزرسانی شد",
+      "title": "اطلاعات شخصی"
+    },
+    "change_picture": "تغییر عکس",
+    "email": "ایمیل:",
+    "first_name": "نام",
+    "last_name": "نام خانوادگی",
+    "notifications": {
+      "empty": "اعلانی دریافت نشده",
+      "read": "خوانده شده",
+      "title": "اعلان‌ها"
+    }
+  },
+  "Documentation": "مستندات"
+}

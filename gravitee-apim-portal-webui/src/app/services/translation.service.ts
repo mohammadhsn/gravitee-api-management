@@ -20,6 +20,9 @@ import { Title } from '@angular/platform-browser';
 
 import { environment } from '../../environments/environment';
 
+const RTL_LANGS = new Set(['fa', 'ar', 'he', 'ur']);
+export const LOCALE_STORAGE_KEY = 'gravitee-portal-locale';
+
 @Injectable({
   providedIn: 'root',
 })
@@ -29,15 +32,30 @@ export class TranslationService {
     private titleService: Title,
   ) {}
 
+  applyDocumentDirection(lang: string) {
+    document.documentElement.dir = RTL_LANGS.has(lang) ? 'rtl' : 'ltr';
+    document.documentElement.lang = lang;
+  }
+
+  private resolveInitialLang(): string {
+    const defaultLang = environment.locales[0];
+    const savedLang = localStorage.getItem(LOCALE_STORAGE_KEY);
+    if (savedLang && environment.locales.includes(savedLang)) {
+      return savedLang;
+    }
+    const browserLang = this.translateService.getBrowserLang();
+    return environment.locales.includes(browserLang) ? browserLang : defaultLang;
+  }
+
   load() {
     return new Promise(resolve => {
       this.translateService.addLangs(environment.locales);
-      const defaultLang = environment.locales[0];
-      this.translateService.setDefaultLang(defaultLang);
-      const browserLang = this.translateService.getBrowserLang();
-      this.translateService.use(environment.locales.includes(browserLang) ? browserLang : defaultLang).subscribe(translations => {
-        setLanguage(this.translateService.currentLang);
-        addTranslations(this.translateService.currentLang, translations, this.translateService.currentLang);
+      this.translateService.setDefaultLang(environment.locales[0]);
+      const lang = this.resolveInitialLang();
+      this.translateService.use(lang).subscribe(translations => {
+        setLanguage(lang);
+        addTranslations(lang, translations, lang);
+        this.applyDocumentDirection(lang);
         this.translateService.get('site.title').subscribe(title => this.titleService.setTitle(title));
         resolve(true);
       });

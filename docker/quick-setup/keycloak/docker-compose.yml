@@ -189,7 +189,7 @@ services:
       - frontend
 
   portal_ui:
-    image: ${APIM_REGISTRY:-graviteeio}/apim-portal-ui:${APIM_VERSION:-latest}
+    image: gravitee-portal-ui-fa:latest
     restart: always
     ports:
       - "8085:8080"
@@ -199,5 +199,12 @@ services:
       - PORTAL_API_URL=http://localhost:8083/portal
     volumes:
       - ./.logs/apim-portal-ui:/var/log/nginx
+    networks:
+      - frontend
+  service-b:
+    image: service-b:latest
+    restart: always
+    ports:
+      - "5000:5000"
     networks:
       - frontend

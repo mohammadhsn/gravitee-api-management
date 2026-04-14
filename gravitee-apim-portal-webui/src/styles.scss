@@ -1,6 +1,9 @@
 /* You can add global styles to this file, and also import other style files */
 @import '@fontsource/ibm-plex-sans/latin.css';
 @import '@fontsource/montserrat/latin.css';
+@import '@fontsource/vazirmatn/400.css';
+@import '@fontsource/vazirmatn/600.css';
+@import '@fontsource/vazirmatn/700.css';
 @import '@gravitee/ui-components/assets/css/gravitee-theme.generated.css';
 
 :root {
@@ -310,4 +313,52 @@ body {
   border: 10px solid var(--gv-theme-font-color-dark);
   animation: rotation 1s linear infinite;
   border-bottom-color: transparent;
+}
+
+// ========================
+// RTL (Right-to-Left) support
+// Activated via dir="rtl" on <html> when a RTL locale (fa, ar, he, ur) is selected.
+// ========================
+[dir='rtl'] {
+  // Vazirmatn is designed for Persian/Arabic script with matching Latin glyphs
+  font-family: 'Vazirmatn', 'Tahoma', sans-serif;
+
+  // Flip inline margin on badge/label next to titles
+  .title span {
+    margin-left: 0;
+    margin-right: 8px;
+  }
+
+  // Flip the aside margin so it sits on the correct side
+  .main .page__box {
+    margin-right: 0;
+    margin-left: 1rem;
+  }
+
+  // Back button: anchor to the right in RTL
+  .page__content-back-button {
+    right: 0;
+    left: auto;
+  }
+
+  // Pagination: flex-end in RTL means left edge — keep it at the start (left) of the row
+  .pagination__block {
+    justify-content: flex-start;
+  }
+
+  // Footer category border: align left edge to match RTL reading direction
+  .layout__footer__top__category__title_border {
+    margin-left: 0.5rem;
+    margin-right: 0;
+  }
+
+  // Footer bottom: was row-reverse (logo right, links left) — in RTL that becomes LTR, so swap back
+  .layout__footer__bottom {
+    flex-direction: row-reverse;
+  }
+
+  // Footer category links: text starts from right
+  .layout__footer__top__category__links li {
+    text-align: right;
+  }
 }

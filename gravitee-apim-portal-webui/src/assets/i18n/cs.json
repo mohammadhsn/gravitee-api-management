@@ -123,7 +123,7 @@
       "title": "Validace"
     },
     "planSubscription": {
-      "title" : "Nakonfigurujte si předplatné",
+      "title": "Nakonfigurujte si předplatné",
       "channel": "Vyberte kanál odběru",
       "entrypointId": "Vyberte vstupní bod",
       "entrypointConfiguration": "Nakonfigurujte vstupní bod"
@@ -544,7 +544,7 @@
       }
     },
     "planSubscription": {
-      "title" : "Nakonfigurujte si předplatné",
+      "title": "Nakonfigurujte si předplatné",
       "channel": "Vyberte kanál odběru",
       "entrypointId": "Vyberte vstupní bod",
       "entrypointConfiguration": "Nakonfigurujte vstupní bod"
@@ -1166,5 +1166,6 @@
       "read": "Přečtěte si",
       "title": "Oznámení"
     }
-  }
+  },
+  "Documentation": "Dokumentace"
 }

@@ -123,7 +123,7 @@
       "title": "Validation"
     },
     "planSubscription": {
-      "title" : "Configurer votre souscription",
+      "title": "Configurer votre souscription",
       "channel": "Sélectionner le channel de souscription",
       "entrypointId": "Sélectionner l'entrypoint",
       "entrypointConfiguration": "Configurer l'entrypoint"
@@ -544,7 +544,7 @@
       }
     },
     "planSubscription": {
-      "title" : "Configurer votre souscription",
+      "title": "Configurer votre souscription",
       "channel": "Sélectionner le channel de souscription",
       "entrypointId": "Sélectionner l'entrypoint",
       "entrypointConfiguration": "Configurer l'entrypoint"
@@ -1166,5 +1166,6 @@
       "read": "Lu",
       "title": "Notifications"
     }
-  }
+  },
+  "Documentation": "Documentation"
 }

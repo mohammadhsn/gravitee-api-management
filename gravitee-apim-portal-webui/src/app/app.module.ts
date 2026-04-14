@@ -48,6 +48,7 @@ import { GvContactComponent } from './components/gv-contact/gv-contact.component
 import { GvCookieConsentComponent } from './components/gv-cookie-consent/gv-cookie-consent.component';
 import { GvDocumentationComponent } from './components/gv-documentation/gv-documentation.component';
 import { GvHeaderItemComponent } from './components/gv-header-item/gv-header-item.component';
+import { GvLanguageSwitcherComponent } from './components/gv-language-switcher/gv-language-switcher.component';
 import { GvMenuRightSlotDirective } from './directives/gv-menu-right-slot.directive';
 import { GvMenuRightTransitionSlotDirective } from './directives/gv-menu-right-transition-slot.directive';
 import { GvMenuTopSlotDirective } from './directives/gv-menu-top-slot.directive';
@@ -87,6 +88,7 @@ import { TicketsHistoryComponent } from './components/gv-tickets-history/tickets
     GvCookieConsentComponent,
     GvDocumentationComponent,
     GvHeaderItemComponent,
+    GvLanguageSwitcherComponent,
     GvMenuRightSlotDirective,
     GvMenuRightTransitionSlotDirective,
     GvMenuTopSlotDirective,

@@ -304,7 +304,7 @@ export class AppComponent implements AfterViewInit, OnInit, OnDestroy {
         active: this.router.isActive(path, false),
         path,
         target,
-        title: element.name,
+        title: this.translateService.instant(element.name),
       };
       return navRoute;
     });

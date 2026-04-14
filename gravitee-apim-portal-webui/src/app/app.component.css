@@ -161,6 +161,10 @@
 
 .layout__nav__container {
   text-align: right;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
 }
 
 .layout__nav {
@@ -262,4 +266,56 @@ gv-nav {
   align-items: center;
   display: flex;
   justify-content: flex-end;
+}
+
+/* ========================
+   RTL layout overrides
+   ======================== */
+
+/* Header grid: reverse column order so logo is right, nav is left */
+:host-context([dir='rtl']) .layout__header__container {
+  grid-template-columns: auto 1fr 250px;
+}
+
+/* Nav alignment flips */
+:host-context([dir='rtl']) gv-nav {
+  justify-content: flex-start;
+}
+
+/* User menu + language switcher container: align to the left */
+:host-context([dir='rtl']) .layout__nav__container {
+  justify-content: flex-start;
+}
+
+/* Homepage title text: right-aligned */
+:host-context([dir='rtl']) .layout__header__homepage__title {
+  text-align: right;
+}
+
+/* API search actions: border switches sides */
+:host-context([dir='rtl']) .layout__api__actions {
+  border-left: none;
+  border-right: 1px solid lightgrey;
+  padding-left: 0;
+  padding-right: 20px;
+}
+
+:host-context([dir='rtl']) .layout__api__search {
+  margin-right: 0;
+  margin-left: 25px;
+}
+
+/* Footer top logo: keep it on the left in RTL (start of reading direction) */
+:host-context([dir='rtl']) .layout__footer__top {
+  grid-template-columns: repeat(7, 1fr) 20%;
+}
+
+/* Footer bottom: was row-reverse — in RTL that visually mirrors, so use row */
+:host-context([dir='rtl']) .layout__footer__bottom {
+  flex-direction: row;
+}
+
+:host-context([dir='rtl']) .layout__footer__bottom li {
+  padding-right: 0;
+  padding-left: 30px;
 }

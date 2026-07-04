@@ -149,6 +149,36 @@ services:
         networks:
             - storage
 
+    # ELK phase 2: ship ALL container logs -> Logstash -> ES (logs-* daily indices), raw.
+    logstash:
+        image: docker.elastic.co/logstash/logstash:${LOGSTASH_VERSION:-8.17.2}
+        restart: always
+        depends_on:
+            elasticsearch:
+                condition: service_healthy
+        environment:
+            - LS_JAVA_OPTS=-Xms512m -Xmx512m
+        volumes:
+            - ./elk/logstash/config/logstash.yml:/usr/share/logstash/config/logstash.yml:ro
+            - ./elk/logstash/pipeline:/usr/share/logstash/pipeline:ro
+        networks:
+            - storage
+
+    filebeat:
+        image: docker.elastic.co/beats/filebeat:${FILEBEAT_VERSION:-8.17.2}
+        restart: always
+        user: root
+        # --strict.perms=false: Filebeat otherwise refuses a bind-mounted config it deems world-writable.
+        command: ["filebeat", "-e", "--strict.perms=false"]
+        depends_on:
+            - logstash
+        volumes:
+            - ./elk/filebeat/filebeat.yml:/usr/share/filebeat/filebeat.yml:ro
+            - /var/lib/docker/containers:/var/lib/docker/containers:ro
+            - /var/run/docker.sock:/var/run/docker.sock:ro
+        networks:
+            - storage
+
     gateway:
         image: ${APIM_REGISTRY:-graviteeio}/apim-gateway:${APIM_VERSION:-4.11.6}
         restart: always

@@ -1,0 +1,17 @@
+# ELK phase 2 — tail ALL Docker container logs, enrich with container metadata,
+# ship to Logstash. Raw (no parsing here).
+filebeat.inputs:
+  - type: filestream
+    id: docker-containers
+    paths:
+      - /var/lib/docker/containers/*/*.log
+    parsers:
+      - container: ~          # parse the Docker json-file log format -> `message`
+
+processors:
+  - add_docker_metadata: ~    # adds container.name / container.image / labels
+
+output.logstash:
+  hosts: ["logstash:5044"]
+
+logging.level: info

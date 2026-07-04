@@ -6,6 +6,7 @@ networks:
 
 volumes:
     data-elasticsearch:
+    data-kibana:
     keycloak_data:
     data-mongo:
 
@@ -128,6 +129,23 @@ services:
             interval: 5s
             timeout: 3s
             retries: 10
+        networks:
+            - storage
+
+    # ELK phase 1: query the ES state (Gravitee analytics: gravitee-request-*, gravitee-log-*,
+    # gravitee-monitor-*, gravitee-health-*). No auth — ES has xpack.security disabled.
+    kibana:
+        image: docker.elastic.co/kibana/kibana:${KIBANA_VERSION:-8.17.2}
+        restart: always
+        depends_on:
+            elasticsearch:
+                condition: service_healthy
+        environment:
+            ELASTICSEARCH_HOSTS: '["http://elasticsearch:9200"]'
+        ports:
+            - "${KIBANA_PORT:-5601}:5601"
+        volumes:
+            - data-kibana:/usr/share/kibana/data
         networks:
             - storage
 

@@ -7,6 +7,8 @@ networks:
 volumes:
     data-elasticsearch:
     data-kibana:
+    data-prometheus:
+    data-grafana:
     keycloak_data:
     data-mongo:
 
@@ -179,6 +181,36 @@ services:
         networks:
             - storage
 
+    # Monitoring: scrape Gravitee node metrics (gateway:18082, management_api:18083).
+    prometheus:
+        image: prom/prometheus:${PROMETHEUS_VERSION:-v2.53.2}
+        restart: always
+        volumes:
+            - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+            - data-prometheus:/prometheus
+        ports:
+            - "${PROMETHEUS_PORT:-9090}:9090"
+        networks:
+            - storage
+
+    # Monitoring dashboards on top of Prometheus (datasource auto-provisioned).
+    grafana:
+        image: grafana/grafana:${GRAFANA_VERSION:-11.3.1}
+        restart: always
+        depends_on:
+            - prometheus
+        environment:
+            - GF_SECURITY_ADMIN_USER=admin
+            - GF_SECURITY_ADMIN_PASSWORD=admin
+        volumes:
+            - ./grafana/provisioning:/etc/grafana/provisioning:ro
+            - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
+            - data-grafana:/var/lib/grafana
+        ports:
+            - "${GRAFANA_PORT:-3000}:3000"
+        networks:
+            - storage
+
     gateway:
         image: ${APIM_REGISTRY:-graviteeio}/apim-gateway:${APIM_VERSION:-4.11.6}
         restart: always
@@ -201,6 +233,10 @@ services:
             - gravitee_management_mongodb_uri=mongodb://mongodb:27017/gravitee?serverSelectionTimeoutMS=5000&connectTimeoutMS=5000&socketTimeoutMS=5000
             - gravitee_ratelimit_mongodb_uri=mongodb://mongodb:27017/gravitee?serverSelectionTimeoutMS=5000&connectTimeoutMS=5000&socketTimeoutMS=5000
             - gravitee_reporters_elasticsearch_endpoints_0=http://elasticsearch:9200
+            # Expose Prometheus metrics on the node API (gateway:18082/_node/metrics/prometheus).
+            # host=0.0.0.0 so Prometheus (another container) can reach it — default binds localhost.
+            - gravitee_services_core_http_host=0.0.0.0
+            - gravitee_services_metrics_enabled=true
             - gravitee_plugins_path_0=$${gravitee.home}/plugins
             - gravitee_plugins_path_1=$${gravitee.home}/plugins-ext
         networks:
@@ -227,6 +263,10 @@ services:
         environment:
             - gravitee_management_mongodb_uri=mongodb://mongodb:27017/gravitee?serverSelectionTimeoutMS=5000&connectTimeoutMS=5000&socketTimeoutMS=5000
             - gravitee_analytics_elasticsearch_endpoints_0=http://elasticsearch:9200
+            # Expose Prometheus metrics on the node API (management_api:18083/_node/metrics/prometheus).
+            # host=0.0.0.0 so Prometheus (another container) can reach it — default binds localhost.
+            - gravitee_services_core_http_host=0.0.0.0
+            - gravitee_services_metrics_enabled=true
             - gravitee_plugins_path_0=$${gravitee.home}/plugins
             - gravitee_plugins_path_1=$${gravitee.home}/plugins-ext
             - gravitee_security_providers_2_type=oidc

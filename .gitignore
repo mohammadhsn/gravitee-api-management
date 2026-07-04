@@ -62,3 +62,6 @@ gravitee-apim-e2e/ui-test/screenshots/
 
 # Exclude flattened version of the pom, for details see https://maven.apache.org/maven-ci-friendly.html#install-deploy
 .flattened-pom.xml
+# Claude / claude-mem assistant files
+CLAUDE.md
+.claude/

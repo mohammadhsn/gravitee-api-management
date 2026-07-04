@@ -27,18 +27,19 @@
   align-items: center;
   gap: 4px;
   background: none;
-  border: 1px solid var(--gv-theme-neutral-color-dark, #bfbfbf);
+  border: 1px solid transparent;
   border-radius: 4px;
   padding: 4px 8px;
   cursor: pointer;
-  color: var(--gv-theme-font-color-dark, #262626);
+  color: var(--gv-link--c, var(--gv-theme-font-color-dark, #262626));
+  text-shadow: var(--gv-link--tsh, none);
   font-size: 13px;
   line-height: 1;
   transition: border-color 150ms;
 }
 
 .language-switcher__toggle:hover {
-  border-color: var(--gv-theme-color, #5a7684);
+  border-color: var(--gv-link--c, var(--gv-theme-color, #5a7684));
 }
 
 .language-switcher__icon {
@@ -93,6 +94,14 @@
 .language-switcher__option--active {
   font-weight: 600;
   color: var(--gv-theme-color, #5a7684);
+}
+
+/* Homepage hero has a dark background image; .layout__homepage is set on the
+   outer layout div whenever the route is the homepage. Mirror the white-link
+   treatment that .layout__nav applies to gv-nav so the switcher stays visible. */
+:host-context(.layout__homepage) .language-switcher__toggle {
+  color: var(--gv-theme-neutral-color-lightest, #fff);
+  text-shadow: 1px 1px 1px #000;
 }
 
 /* RTL: open dropdown to the left instead of right */

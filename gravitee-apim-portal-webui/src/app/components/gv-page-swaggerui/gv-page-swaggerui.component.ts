@@ -15,7 +15,10 @@
  */
 import { Component, OnInit } from '@angular/core';
 import { PlatformLocation } from '@angular/common';
-import SwaggerUI, { SwaggerUIOptions, SwaggerUIPlugin } from 'swagger-ui';
+import { SwaggerUIBundle } from 'swagger-ui-dist';
+import type { SwaggerUIOptions, SwaggerUIPlugin } from 'swagger-ui';
+
+const SwaggerUI = SwaggerUIBundle as unknown as (config: SwaggerUIOptions) => ReturnType<typeof SwaggerUIBundle>;
 
 import { Page, User } from '../../../../projects/portal-webclient-sdk/src/lib';
 import { CurrentUserService } from '../../services/current-user.service';

@@ -40,6 +40,7 @@
     "@fontsource/dm-sans": "5.2.5",
     "@fontsource/ibm-plex-sans": "5.2.5",
     "@fontsource/montserrat": "5.2.5",
+    "@fontsource/vazirmatn": "5.2.5",
     "@gravitee/ui-components": "4.3.2",
     "@highcharts/map-collection": "2.3.0",
     "@ngx-translate/core": "14.0.0",
@@ -67,6 +68,7 @@
     "resize-observer-polyfill": "1.5.1",
     "rxjs": "6.6.7",
     "swagger-ui": "5.20.1",
+    "swagger-ui-dist": "5.20.1",
     "tslib": "2.3.1",
     "zone.js": "0.15.0"
   },

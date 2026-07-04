@@ -1,50 +1,76 @@
-# Keycloak
+# Gravitee APIM + Keycloak — docker compose
 
-Here is a docker-compose to run APIM with a Keycloak container available as an Identity Provider.
+APIM (Gateway, Management API, Console, Developer Portal) with Keycloak as the
+OIDC identity provider, plus a `service-b` demo backend.
 
----
-> For more information, please read :
-> https://documentation.gravitee.io/apim/getting-started/configuration/authentication/custom-oauth2-openid-authorization-server
----
+## Prerequisites
 
-Keycloak UI is accessible here http://localhost:8080/
+- Docker + Docker Compose v2
+- The custom images referenced in `docker-compose.yml` must be reachable
+  (`service-b`, `gravitee-portal-ui-fa`) — pull/push tags or build them.
 
-## How to use ?
+## Setup
 
-⚠️ You need a license file to be able to run Enterprise Edition of APIM. Do not forget to add your license file into `./.license`.
+### 1. Configuration
 
-In the Keycloak UI ([create a Keycloak client](https://documentation.gravitee.io/apim/getting-started/configuration/authentication/custom-oauth2-openid-authorization-server#create-a-keycloak-client)):
-- Read how to create a new client for your application. (Already imported with `realm/realm-gio.json`)
-- Create a user in the "GIO" realm.
-
-You can read how to [configure the Identity provider following documentation](https://documentation.gravitee.io/apim/getting-started/configuration/authentication/custom-oauth2-openid-authorization-server#configure-keycloak-authentication-in-gravitee) but it's already configured with docker environment.
-
-### How to test an api with `gravitee-resource-oauth2-provider-keycloak`
-
-1. Download the resource `./download-plugins-ext.sh`
-2. Start the stack with `APIM_VERSION={APIM_VERSION} docker-compose up -d`
-3. Import the `secured-api.json`
-4. Start and deploy the api
-5. Add `gravitee-client` as client_id of your app.
-6. Subscribe to Oauth plan of secured api with your app.
-7. Ask a token to Keycloak
-```
-curl --location --request POST 'http://auth.localhost/auth/realms/gio/protocol/openid-connect/token' \
---header 'Content-Type: application/x-www-form-urlencoded' \
---data-urlencode 'client_id=gravitee-client' \
---data-urlencode 'grant_type=client_credentials' \
---data-urlencode 'client_secret=00dc0118-2a0d-4249-86a3-3e133f5de145'
-```
-8. Call the api `Authorization: Bearer <token>`
-```
-curl --location --request GET 'http://localhost:8082/worldtimeapi' \
---header 'Authorization: Bearer <token>'
+```sh
+cp .env.dist .env
 ```
 
-## How to run ?
+Local use: leave the defaults. On a VM, set `PUBLIC_HOST` to the machine's
+public IP (and adjust ports if needed) — every browser-facing URL is derived
+from it.
 
-`APIM_VERSION={APIM_VERSION} docker-compose up -d ` 
+### 2. Create the bind-mount directories (required on Linux)
 
-To be sure to fetch last version of images, you can do
-`export APIM_VERSION={APIM_VERSION} && docker-compose down -v && docker-compose pull && docker-compose up`
+The compose bind-mounts host directories for logs, plugins and the license.
+If they don't exist, Docker creates them **as root**, and the in-container
+service users (e.g. UID 1000) then can't write — containers fail to start or
+log. Pre-create them with open permissions:
 
+```sh
+mkdir -p \
+  .logs/apim-gateway \
+  .logs/apim-management-api \
+  .logs/apim-management-ui \
+  .logs/apim-mongodb \
+  .logs/apim-portal-ui \
+  .plugins \
+  .license
+
+chmod -R 777 .logs .plugins .license
+```
+
+> On macOS Docker Desktop this isn't strictly required (ownership is mapped
+> automatically), but running it anyway is harmless.
+
+### 3. (Optional) License & secured-API plugin
+
+- Enterprise features: drop your license file into `.license/`.
+- To run the `secured-api.json` OAuth2 demo: `./download-plugins-ext.sh`
+  (populates `.plugins/`), then import `secured-api.json` in the Console.
+
+## Run
+
+```sh
+docker compose up -d
+```
+
+To rebuild from a clean slate (wipes Keycloak realm/users, Mongo, ES):
+
+```sh
+docker compose down -v && docker compose up -d
+```
+
+## Access
+
+| Service           | URL (local)             | Credentials                              |
+|-------------------|-------------------------|------------------------------------------|
+| APIM Console      | http://localhost:8084   | `admin` / `admin`                        |
+| Developer Portal  | http://localhost:8085   | `devportal` / `password` (via Keycloak)  |
+| API Gateway       | http://localhost:8082   | —                                        |
+| Management API    | http://localhost:8083   | —                                        |
+| Keycloak          | http://localhost:8080   | `admin` / `password`                     |
+
+On a VM, replace `localhost` with `PUBLIC_HOST` and open ports
+`8080, 8082, 8083, 8084, 8085` in the firewall.

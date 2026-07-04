@@ -65,3 +65,6 @@ gravitee-apim-e2e/ui-test/screenshots/
 # Claude / claude-mem assistant files
 CLAUDE.md
 .claude/
+
+# Local env for the keycloak quick-setup demo (template: .env.dist)
+docker/quick-setup/keycloak/.env

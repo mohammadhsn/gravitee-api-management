@@ -28,7 +28,7 @@
   "oauth2DeviceCodeLifespan": 600,
   "oauth2DevicePollingInterval": 600,
   "enabled": true,
-  "sslRequired": "external",
+  "sslRequired": "none",
   "registrationAllowed": false,
   "registrationEmailAsUsername": false,
   "rememberMe": false,
@@ -496,6 +496,24 @@
       },
       "notBefore": 0,
       "groups": []
+    },
+    {
+      "username": "devportal",
+      "email": "devportal@example.com",
+      "firstName": "Dev",
+      "lastName": "Portal",
+      "emailVerified": true,
+      "enabled": true,
+      "credentials": [
+        {
+          "type": "password",
+          "value": "password",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "default-roles-gio"
+      ]
     }
   ],
   "scopeMappings": [
@@ -696,10 +714,12 @@
       "clientAuthenticatorType": "client-secret",
       "secret": "00dc0118-2a0d-4249-86a3-3e133f5de145",
       "redirectUris": [
-        "http://localhost:8084/*"
+        "http://localhost:8084/*",
+        "http://localhost:8085/*"
       ],
       "webOrigins": [
-        "http://localhost:8084"
+        "http://localhost:8084",
+        "http://localhost:8085"
       ],
       "notBefore": 0,
       "bearerOnly": false,

@@ -1,0 +1,14 @@
+callout:
+url: http://keycloak:8080/realms/master/protocol/openid-connect/token
+header: Content-Type=application/x-www-form-urlencoded
+body: grant_type=client_credentials&client_id=service-b&client_secret=
+variable: service_access_token={#jsonPath(#calloutResponse.content, '$.access_token')}
+
+header transformation:
+Authorization: Bearer {#context.attributes['service_access_token']}
+
+
+curl -X POST 'http://localhost:8080/realms/master/protocol/openid-connect/token' \
+  -d 'grant_type=client_credentials' \
+  -d 'client_id=service-b' \
+  -d 'client_secret=KhCKqamud24THJMKLTBQx6QF5dwowyOY'

@@ -13,18 +13,28 @@ volumes:
     data-mongo:
 
 services:
+    # Edge reverse-proxy: single entrypoint, path-per-service routing (see conf/nginx.conf).
+    # depends_on all proxied services so their names resolve when nginx parses proxy_pass.
     nginx:
         image: nginx:latest
         hostname: auth.localhost
         restart: unless-stopped
         depends_on:
             - keycloak
+            - management_api
+            - management_ui
+            - portal_ui
+            - gateway
+            - kibana
+            - grafana
+            - prometheus
         ports:
-            - "80:80"
+            - "${EDGE_PORT:-80}:80"
         volumes:
-            - ./conf/nginx.conf:/etc/nginx/nginx.conf
+            - ./conf/nginx.conf:/etc/nginx/nginx.conf:ro
         networks:
             - frontend
+            - storage
 
     keycloak:
         image: quay.io/keycloak/keycloak:26.2.0
@@ -41,11 +51,12 @@ services:
             # then rejects them at userinfo when the management-api calls in via keycloak:8080
             # ("Token verification failed"). Fixed hostname + non-dynamic backchannel makes
             # every request validate against the same issuer regardless of the Host header.
-            - KC_HOSTNAME=${PUBLIC_SCHEME}://${PUBLIC_HOST}:${KC_PORT}
+            # Behind the edge proxy at /auth: issuer + relative path both under /auth.
+            - KC_HOSTNAME=${PUBLIC_BASE_URL}/auth
             - KC_HOSTNAME_BACKCHANNEL_DYNAMIC=false
+            - KC_HTTP_RELATIVE_PATH=/auth
         restart: always
-        ports:
-            - ${KC_PORT}:8080
+        # No published port — reached only via the edge proxy at ${PUBLIC_BASE_URL}/auth
         volumes:
             # KC 26 `--import-realm` only reads /opt/keycloak/data/import/, not /tmp.
             - ./realm/realm-gio.json:/opt/keycloak/data/import/realm-gio.json
@@ -65,8 +76,8 @@ services:
             keycloak:
                 condition: service_started
         environment:
-            - PUBLIC_CONSOLE_URL=${PUBLIC_SCHEME}://${PUBLIC_HOST}:${CONSOLE_PORT}
-            - PUBLIC_PORTAL_URL=${PUBLIC_SCHEME}://${PUBLIC_HOST}:${PORTAL_PORT}
+            - PUBLIC_CONSOLE_URL=${PUBLIC_BASE_URL}/console
+            - PUBLIC_PORTAL_URL=${PUBLIC_BASE_URL}/devportal
         entrypoint:
             - /bin/sh
             - -c
@@ -74,7 +85,7 @@ services:
                 set -e
                 KC=/opt/keycloak/bin/kcadm.sh
                 echo "waiting for keycloak admin api..."
-                until $$KC config credentials --server http://keycloak:8080 --realm master --user admin --password password >/dev/null 2>&1; do
+                until $$KC config credentials --server http://keycloak:8080/auth --realm master --user admin --password password >/dev/null 2>&1; do
                     sleep 5
                 done
                 # HTTP demo: don't require HTTPS on any realm. 'master' is NOT file-managed,
@@ -95,8 +106,6 @@ services:
     mongodb:
         image: mongo:${MONGODB_VERSION:-6.0}
         restart: always
-        ports:
-            - "27017:27017"
         volumes:
             - data-mongo:/data/db
             - ./.logs/apim-mongodb:/var/log/mongodb
@@ -144,8 +153,9 @@ services:
                 condition: service_healthy
         environment:
             ELASTICSEARCH_HOSTS: '["http://elasticsearch:9200"]'
-        ports:
-            - "${KIBANA_PORT:-5601}:5601"
+            # Served behind the edge proxy under /kibana
+            SERVER_BASEPATH: /kibana
+            SERVER_REWRITEBASEPATH: "true"
         volumes:
             - data-kibana:/usr/share/kibana/data
         networks:
@@ -185,11 +195,16 @@ services:
     prometheus:
         image: prom/prometheus:${PROMETHEUS_VERSION:-v2.53.2}
         restart: always
+        # external-url sets the sub-path (/prometheus) it serves + advertises behind the edge proxy.
+        command:
+            - "--config.file=/etc/prometheus/prometheus.yml"
+            - "--storage.tsdb.path=/prometheus"
+            - "--web.console.libraries=/usr/share/prometheus/console_libraries"
+            - "--web.console.templates=/usr/share/prometheus/consoles"
+            - "--web.external-url=${PUBLIC_BASE_URL}/prometheus"
         volumes:
             - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
             - data-prometheus:/prometheus
-        ports:
-            - "${PROMETHEUS_PORT:-9090}:9090"
         networks:
             - storage
 
@@ -202,20 +217,20 @@ services:
         environment:
             - GF_SECURITY_ADMIN_USER=admin
             - GF_SECURITY_ADMIN_PASSWORD=admin
+            # Served behind the edge proxy under /grafana
+            - GF_SERVER_ROOT_URL=${PUBLIC_BASE_URL}/grafana
+            - GF_SERVER_SERVE_FROM_SUB_PATH=true
         volumes:
             - ./grafana/provisioning:/etc/grafana/provisioning:ro
             - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
             - data-grafana:/var/lib/grafana
-        ports:
-            - "${GRAFANA_PORT:-3000}:3000"
         networks:
             - storage
 
     gateway:
         image: ${APIM_REGISTRY:-graviteeio}/apim-gateway:${APIM_VERSION:-4.11.6}
         restart: always
-        ports:
-            - "${GW_PORT}:8082"
+        # No published port — reached via the edge proxy at the root ${PUBLIC_BASE_URL}/
         depends_on:
             mongodb:
                 condition: service_healthy
@@ -223,8 +238,6 @@ services:
                 condition: service_healthy
             keycloak:
                 condition: service_started
-        links:
-            - nginx:auth.localhost
         volumes:
             - ./.logs/apim-gateway:/opt/graviteeio-gateway/logs
             - ./.plugins:/opt/graviteeio-gateway/plugins-ext
@@ -246,8 +259,7 @@ services:
     management_api:
         image: ${APIM_REGISTRY:-graviteeio}/apim-management-api:${APIM_VERSION:-4.11.6}
         restart: always
-        ports:
-            - "${API_PORT}:8083"
+        # No published port — REST APIs reached via the edge proxy at /management and /portal
         links:
             - mongodb
             - elasticsearch
@@ -275,12 +287,13 @@ services:
             - gravitee_security_providers_2_clientSecret=00dc0118-2a0d-4249-86a3-3e133f5de145
             # Server-to-server endpoints: called by THIS container, so they must use the
             # in-network hostname `keycloak:8080`, not localhost (which is the container itself).
-            - gravitee_security_providers_2_tokenEndpoint=http://keycloak:8080/realms/gio/protocol/openid-connect/token
-            - gravitee_security_providers_2_tokenIntrospectionEndpoint=http://keycloak:8080/realms/gio/protocol/openid-connect/token/introspect
-            - gravitee_security_providers_2_userInfoEndpoint=http://keycloak:8080/realms/gio/protocol/openid-connect/userinfo
-            # Browser-facing endpoints: resolved by the user's browser, so they use the public host.
-            - gravitee_security_providers_2_authorizeEndpoint=${PUBLIC_SCHEME}://${PUBLIC_HOST}:${KC_PORT}/realms/gio/protocol/openid-connect/auth
-            - gravitee_security_providers_2_userLogoutEndpoint=${PUBLIC_SCHEME}://${PUBLIC_HOST}:${KC_PORT}/realms/gio/protocol/openid-connect/logout
+            # Backchannel: in-network, Keycloak is under /auth (KC_HTTP_RELATIVE_PATH).
+            - gravitee_security_providers_2_tokenEndpoint=http://keycloak:8080/auth/realms/gio/protocol/openid-connect/token
+            - gravitee_security_providers_2_tokenIntrospectionEndpoint=http://keycloak:8080/auth/realms/gio/protocol/openid-connect/token/introspect
+            - gravitee_security_providers_2_userInfoEndpoint=http://keycloak:8080/auth/realms/gio/protocol/openid-connect/userinfo
+            # Browser-facing endpoints: via the edge proxy at ${PUBLIC_BASE_URL}/auth
+            - gravitee_security_providers_2_authorizeEndpoint=${PUBLIC_BASE_URL}/auth/realms/gio/protocol/openid-connect/auth
+            - gravitee_security_providers_2_userLogoutEndpoint=${PUBLIC_BASE_URL}/auth/realms/gio/protocol/openid-connect/logout
             - gravitee_security_providers_2_color=#0076b4
             - gravitee_security_providers_2_syncMappings=false
             - gravitee_security_providers_2_scopes_0=openid
@@ -291,22 +304,20 @@ services:
             - gravitee_security_providers_2_userMapping_firstname=family_name
             - gravitee_security_providers_2_userMapping_picture=picture
             # Per-env URL overrides for the Console/Portal "installation access" URLs.
-            # DISABLED for raw-IP deployments: Gravitee validates the URL HOST as a DNS
-            # domain name (Guava InternetDomainName) and REJECTS IP literals — so with
-            # PUBLIC_HOST set to an IP (e.g. 192.168.8.22) the management-api crashes at
-            # boot: "Installation 'console' url '<ip>' is malformed". (localhost passes.)
-            # An empty value also fails validation, so these must be omitted, not blank.
-            # Re-enable ONLY when PUBLIC_HOST is a DNS hostname; with a raw IP leave them
-            # off — the Console UI / defaults are used instead (login is unaffected; it
-            # uses the OIDC endpoints above, not these).
+            # DISABLED: Gravitee validates the URL HOST as a DNS domain name (Guava
+            # InternetDomainName) and REJECTS IP literals — with a raw-IP PUBLIC_BASE_URL
+            # the management-api crashes at boot ("Installation 'console' url '<ip>' is
+            # malformed"). An empty value also fails, so these must be omitted, not blank.
+            # Re-enable ONLY when PUBLIC_BASE_URL is a DNS hostname (login is unaffected —
+            # it uses the OIDC endpoints above, not these).
             # - gravitee_installation_standalone_portal_urls_0_envId=DEFAULT
-            # - gravitee_installation_standalone_portal_urls_0_url=${PUBLIC_SCHEME}://${PUBLIC_HOST}:${PORTAL_PORT}
+            # - gravitee_installation_standalone_portal_urls_0_url=${PUBLIC_BASE_URL}/devportal
             # - gravitee_installation_standalone_console_urls_0_orgId=DEFAULT
-            # - gravitee_installation_standalone_console_urls_0_url=${PUBLIC_SCHEME}://${PUBLIC_HOST}:${CONSOLE_PORT}
+            # - gravitee_installation_standalone_console_urls_0_url=${PUBLIC_BASE_URL}/console
             # Gateway entrypoint advertised in the portal's Try-It-Out / curl snippets.
             # SYSTEM-scope override of Key.PORTAL_ENTRYPOINT (default placeholder is
             # "https://api.company.com"). Point this at your gateway's public URL.
-            - gravitee_portal_entrypoint=${PUBLIC_SCHEME}://${PUBLIC_HOST}:${GW_PORT}
+            - gravitee_portal_entrypoint=${PUBLIC_BASE_URL}/
         networks:
             - storage
             - frontend
@@ -314,12 +325,12 @@ services:
     management_ui:
         image: ${APIM_REGISTRY:-graviteeio}/apim-management-ui:${APIM_VERSION:-4.11.6}
         restart: always
-        ports:
-            - "${CONSOLE_PORT}:8080"
+        # No published port — served via the edge proxy under /console/
         depends_on:
             - management_api
         environment:
-            - MGMT_API_URL=${PUBLIC_SCHEME}://${PUBLIC_HOST}:${API_PORT}/management/
+            - CONSOLE_BASE_HREF=/console/
+            - MGMT_API_URL=${PUBLIC_BASE_URL}/management/
         volumes:
             - ./.logs/apim-management-ui:/var/log/nginx
         networks:
@@ -328,12 +339,12 @@ services:
     portal_ui:
         image: docker.io/mohammadhsn/gravitee-portal-ui-fa:latest
         restart: always
-        ports:
-            - "${PORTAL_PORT}:8080"
+        # No published port — served via the edge proxy under /devportal/
         depends_on:
             - management_api
         environment:
-            - PORTAL_API_URL=${PUBLIC_SCHEME}://${PUBLIC_HOST}:${API_PORT}/portal
+            - PORTAL_BASE_HREF=/devportal/
+            - PORTAL_API_URL=${PUBLIC_BASE_URL}/portal
         volumes:
             - ./.logs/apim-portal-ui:/var/log/nginx
         networks:
@@ -341,12 +352,11 @@ services:
     service-b:
         image: docker.io/mohammadhsn/service-b:latest
         restart: always
-        ports:
-            - "5000:5000"
+        # No published port — internal backend reached by the gateway.
+        # NOTE: issuer is now ${PUBLIC_BASE_URL}/auth/realms/master, but the pushed image
+        # still has a hardcoded issuer and ignores KEYCLOAK_ISSUER_URL — needs a rebuild+push
+        # (deferred). Until then /protected will 401.
         environment:
-            # Issuer that service-b validates tokens against — must equal Keycloak's
-            # KC_HOSTNAME (the 'iss' every token carries). JWKS is still fetched over
-            # the internal keycloak:8080 (default in config.py).
-            - KEYCLOAK_ISSUER_URL=${PUBLIC_SCHEME}://${PUBLIC_HOST}:${KC_PORT}
+            - KEYCLOAK_ISSUER_URL=${PUBLIC_BASE_URL}/auth
         networks:
             - frontend

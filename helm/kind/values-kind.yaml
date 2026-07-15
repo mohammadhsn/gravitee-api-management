@@ -1,0 +1,113 @@
+# Minimal overlay for local kind (single node, ~6 GB Docker budget).
+#   helm dependency build helm/
+#   helm install apim helm/ -n gravitee --create-namespace -f helm/kind/values-kind.yaml
+#
+# Trims: ES -> 1 all-roles node, Mongo -> 1-member replica set, Gravitee -> 1 replica each.
+# Storage: kind's default StorageClass (rancher.io/local-path) provisions PVCs on node disk.
+
+# Bitnami moved images to `bitnamilegacy/*`; their charts refuse "non-standard"
+# images unless this guard is lifted.
+global:
+  security:
+    allowInsecureImages: true
+
+# ── MongoDB (bundled Bitnami subchart) ───────────────────────────────────────
+# Keep architecture=replicaset (the parent chart wires mongo.dbhost to the
+# ...-replicaset-headless service with rsEnabled), but shrink to a single member.
+mongodb:
+  enabled: true
+  replicaCount: 1
+  arbiter:
+    enabled: false
+  # The bitnamilegacy mongodb image isn't hardened-compatible: as UID 1001 with a
+  # read-only rootfs it can't read its own config. Run as the image's intended user
+  # (disable the chart's securityContext hardening) and use a root volume-permissions
+  # init to create/chown the data dir. (os-shell also moved to bitnamilegacy.)
+  volumePermissions:
+    enabled: true
+    image:
+      repository: bitnamilegacy/os-shell
+  podSecurityContext:
+    enabled: false
+  containerSecurityContext:
+    enabled: false
+  persistence:
+    size: 1Gi
+  resources:
+    requests: { cpu: 50m, memory: 256Mi }
+    limits:   { cpu: 500m, memory: 512Mi }
+
+# ── Elasticsearch (bundled Bitnami subchart) ─────────────────────────────────
+# Single node that carries ALL roles (masterOnly=false); other roles disabled.
+elasticsearch:
+  enabled: true
+  # os-shell moved to bitnamilegacy too (chart still points at the dead bitnami/os-shell).
+  sysctlImage:
+    repository: bitnamilegacy/os-shell
+  volumePermissions:
+    image:
+      repository: bitnamilegacy/os-shell
+  master:
+    masterOnly: false
+    replicaCount: 1
+    heapSize: 512m
+    persistence:
+      size: 4Gi
+    resources:
+      requests: { cpu: 100m, memory: 700Mi }
+      limits:   { cpu: 1,    memory: 1300Mi }
+  data:
+    replicaCount: 0
+  coordinating:
+    replicaCount: 0
+  ingest:
+    replicaCount: 0
+
+# Parent chart's ES connection. Default endpoint targets the ingest headless
+# service, which no longer exists — point it at the single master node instead,
+# and use 0 replicas so a 1-node cluster is green (not yellow).
+es:
+  endpoints:
+    - http://graviteeio-apim-elasticsearch-master-hl:9200
+  settings:
+    number_of_shards: 1
+    number_of_replicas: 0
+
+# ── Gravitee components: 1 replica each, modest footprint ────────────────────
+# image.tag pinned to the 4.11.6 images already in local Docker (loaded via
+# `kind load docker-image`); pullPolicy IfNotPresent so kind uses them, no pull.
+api:
+  replicaCount: 1
+  image:
+    tag: "4.11.6"
+    pullPolicy: IfNotPresent
+  resources:
+    requests: { cpu: 100m, memory: 512Mi }
+    limits:   { cpu: 1,    memory: 1024Mi }
+
+gateway:
+  replicaCount: 1
+  image:
+    tag: "4.11.6"
+    pullPolicy: IfNotPresent
+  resources:
+    requests: { cpu: 100m, memory: 384Mi }
+    limits:   { cpu: 1,    memory: 768Mi }
+
+ui:
+  replicaCount: 1
+  image:
+    tag: "4.11.6"
+    pullPolicy: IfNotPresent
+  resources:
+    requests: { cpu: 25m, memory: 64Mi }
+    limits:   { cpu: 250m, memory: 128Mi }
+
+portal:
+  replicaCount: 1
+  image:
+    tag: "latest"
+    pullPolicy: IfNotPresent
+  resources:
+    requests: { cpu: 25m, memory: 64Mi }
+    limits:   { cpu: 250m, memory: 128Mi }

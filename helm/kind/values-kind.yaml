@@ -11,12 +11,24 @@ global:
   security:
     allowInsecureImages: true
 
-# The api advertises its own URL (in v2/ui/bootstrap) computed from the ingress host
-# WITHOUT the port -> http://localhost -> the console then calls http://localhost/management/...
-# and fails. Override it with the ported edge URL.
+# All these URLs are otherwise derived from the ingress *host* only (no port, and
+# https for the console/portal), which is wrong behind the :8081 edge:
+#   - api.url        -> advertised in v2/ui/bootstrap; console reads it to call /management
+#   - console/portal -> redirect/link targets (OAuth callbacks, "open in console" links)
+# Pin them all to the real ported edge origin. The console/portal use the `urls` list
+# form (keyed by orgId/envId) so the chart emits our values verbatim.
 installation:
   api:
     url: http://localhost:8081
+  standalone:
+    console:
+      urls:
+        - orgId: DEFAULT
+          url: http://localhost:8081/console
+    portal:
+      urls:
+        - envId: DEFAULT
+          url: http://localhost:8081/devportal
 
 # ── MongoDB (bundled Bitnami subchart) ───────────────────────────────────────
 # Keep architecture=replicaset (the parent chart wires mongo.dbhost to the

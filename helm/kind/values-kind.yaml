@@ -11,6 +11,13 @@ global:
   security:
     allowInsecureImages: true
 
+# The api advertises its own URL (in v2/ui/bootstrap) computed from the ingress host
+# WITHOUT the port -> http://localhost -> the console then calls http://localhost/management/...
+# and fails. Override it with the ported edge URL.
+installation:
+  api:
+    url: http://localhost:8081
+
 # ── MongoDB (bundled Bitnami subchart) ───────────────────────────────────────
 # Keep architecture=replicaset (the parent chart wires mongo.dbhost to the
 # ...-replicaset-headless service with rsEnabled), but shrink to a single member.

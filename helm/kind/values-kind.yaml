@@ -105,6 +105,11 @@ gateway:
   resources:
     requests: { cpu: 100m, memory: 384Mi }
     limits:   { cpu: 1,    memory: 768Mi }
+  # Gateway is the catch-all at root "/" (API context paths pass through natively).
+  ingress:
+    ingressClassName: nginx
+    hosts:
+      - localhost
 
 ui:
   replicaCount: 1
@@ -128,6 +133,17 @@ portal:
   image:
     tag: "latest"
     pullPolicy: IfNotPresent
+  # Portal UI at /devportal (base-href derived from the path); its SPA calls the
+  # portal API at /portal (browser-reachable, same origin, with the edge port).
+  baseURL: http://localhost:8081/portal
+  ingress:
+    ingressClassName: nginx
+    pathType: ImplementationSpecific
+    path: /devportal(/.*)?
+    hosts:
+      - localhost
+    annotations:
+      nginx.ingress.kubernetes.io/rewrite-target: /$1
   resources:
     requests: { cpu: 25m, memory: 64Mi }
     limits:   { cpu: 250m, memory: 128Mi }

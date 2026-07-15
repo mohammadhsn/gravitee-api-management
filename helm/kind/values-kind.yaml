@@ -84,6 +84,18 @@ api:
   resources:
     requests: { cpu: 100m, memory: 512Mi }
     limits:   { cpu: 1,    memory: 1024Mi }
+  # Expose the management + portal REST APIs via the edge (host localhost, http).
+  ingress:
+    management:
+      ingressClassName: nginx
+      scheme: http
+      hosts:
+        - localhost
+    portal:
+      ingressClassName: nginx
+      scheme: http
+      hosts:
+        - localhost
 
 gateway:
   replicaCount: 1
@@ -99,6 +111,14 @@ ui:
   image:
     tag: "4.11.6"
     pullPolicy: IfNotPresent
+  # baseURL is what the Console SPA calls in the browser — must include the edge
+  # port (:8081) and be same-origin with the console page. Overrides the chart's
+  # hardcoded https-no-port default.
+  baseURL: http://localhost:8081/management/
+  ingress:
+    ingressClassName: nginx
+    hosts:
+      - localhost
   resources:
     requests: { cpu: 25m, memory: 64Mi }
     limits:   { cpu: 250m, memory: 128Mi }

@@ -3,8 +3,11 @@
 # Full workflow:
 #   kind create cluster --config helm/kind/kind-cluster.yaml
 #   helm/kind/load-images.sh                 # preload local + Bitnami images (kind has no native preload)
+#   # ingress controller (browser access at http://localhost:8081):
+#   kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.11.3/deploy/static/provider/kind/deploy.yaml
 #   helm dependency build helm/              # fetch ES + Mongo subcharts
 #   helm install apim helm/ -n gravitee --create-namespace -f helm/kind/values-kind.yaml
+#   # then reach the Console at http://localhost:8081/console/
 #   kind delete cluster --name gravitee-apim
 #
 # Single node: fits the ~6 GB Docker budget best (multi-node just splits the same

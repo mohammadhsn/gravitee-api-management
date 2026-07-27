@@ -112,7 +112,7 @@ spec:
           securityContext: {{ toYaml .Values.ui.deployment.securityContext | nindent 12 }}
           env:
             - name: MGMT_API_URL
-              value: "https://{{index .Values.api.ingress.management.hosts 0 }}{{ .Values.api.ingress.management.path }}/"
+              value: "{{ .Values.api.ingress.management.scheme | default "https" }}://{{index .Values.api.ingress.management.hosts 0 }}{{ .Values.api.ingress.management.path }}/"
             {{- if not (eq $base_href_defined "true") }}
             - name: CONSOLE_BASE_HREF
               value: {{ print (regexFind "/[a-zA-Z0-9-\\/_.~]+" .Values.ui.ingress.path) "/" }}

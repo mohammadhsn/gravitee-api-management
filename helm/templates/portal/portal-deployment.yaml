@@ -117,7 +117,7 @@ spec:
           securityContext: {{ toYaml .Values.portal.deployment.securityContext | nindent 12 }}
           env:
             - name: PORTAL_API_URL
-              value: "https://{{index .Values.api.ingress.portal.hosts 0 }}{{ .Values.api.ingress.portal.path }}/"
+              value: "{{ .Values.api.ingress.portal.scheme | default "https" }}://{{index .Values.api.ingress.portal.hosts 0 }}{{ .Values.api.ingress.portal.path }}/"
             {{- if not (eq $base_href_defined "true") }}
             - name: PORTAL_BASE_HREF
               value: {{ print (regexFind "/[a-zA-Z0-9-\\/_.~]+" .Values.portal.ingress.path) "/" }}

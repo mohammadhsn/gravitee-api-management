@@ -201,13 +201,13 @@ spec:
             {{- range $i, $server := .Values.gateway.servers }}
             {{- if and (eq $found "false") (eq $server.type "http") $server.ingress $server.ingress.enabled }}
             - name: portal.entrypoint
-              value: "https://{{ index $server.ingress.hosts 0 }}{{ $server.ingress.path }}"
+              value: "{{ $server.ingress.scheme | default "https" }}://{{ index $server.ingress.hosts 0 }}{{ $server.ingress.path }}"
             {{- $found = "true" -}}
             {{- end }}
             {{- end }}
             {{- else }}
             - name: portal.entrypoint
-              value: "https://{{ index .Values.gateway.ingress.hosts 0 }}{{ .Values.gateway.ingress.path }}"
+              value: "{{ .Values.gateway.ingress.scheme | default "https" }}://{{ index .Values.gateway.ingress.hosts 0 }}{{ .Values.gateway.ingress.path }}"
             {{- end }}
             {{- end }}
             {{- with .Values.kafkaConsole.jwt.secret }}

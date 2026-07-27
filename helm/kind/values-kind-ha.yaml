@@ -1,0 +1,35 @@
+# HA data-layer delta — the ONLY difference between single-node kind and the
+# prod-shaped topology. Layer it LAST, on top of the validated files:
+#
+#   -f helm/deploy/values-common.yaml \
+#   -f helm/kind/values-kind.yaml \
+#   -f helm/kind/values-kind-ha.yaml
+#
+# values-kind.yaml already carries localhost URLs, ingress, image tags/IfNotPresent
+# and 1-replica Gravitee components — all inherited unchanged. This file ONLY bumps
+# the data layer to the HA shape, so the two overlays never drift.
+#
+# Requires the multi-node cluster (helm/kind/kind-cluster-ha.yaml: 3 workers).
+# Scope: HA is applied to the DATA LAYER (ES + Mongo) — the thing we're de-risking.
+# The stateless Gravitee pods stay at 1 replica (their HA is trivial, and RAM is tight).
+
+# ── MongoDB: 1-member replica set -> 3-member replica set ─────────────────────
+# Parent chart already runs mongo as a replica set; just grow it to 3 voting members
+# (quorum survives losing 1) and force one-per-node so a node loss drops exactly one.
+mongodb:
+  replicaCount: 3
+  podAntiAffinityPreset: hard
+
+# ── Elasticsearch: 1 all-role node -> 3 all-role nodes ───────────────────────
+# masterOnly:false is inherited from values-kind.yaml, so all 3 carry data too.
+# Hard anti-affinity spreads them one-per-node; data/coordinating/ingest stay 0.
+elasticsearch:
+  master:
+    replicaCount: 3
+    podAntiAffinityPreset: hard
+
+# Now that there is more than one node, give every shard a replica so a node loss
+# never loses data and the cluster stays green (overrides the single-node 0).
+es:
+  settings:
+    number_of_replicas: 1

@@ -1,0 +1,49 @@
+# Multi-node kind cluster for rehearsing the PROD data-layer topology locally.
+# Single source of truth for the HA drill (mirror of kind-cluster.yaml, but 4 nodes).
+#
+# Purpose: exercise what the single-node cluster CAN'T — a 3-member Mongo replica set
+# and a 3-node Elasticsearch cluster with hard pod anti-affinity (one member per node),
+# shard replicas, and node-down behavior.
+#
+# Full workflow (NOTE the 3rd -f and the cluster name):
+#   kind delete cluster --name gravitee-apim          # free the ~5.8GB the single-node holds
+#   kind create cluster --config helm/kind/kind-cluster-ha.yaml
+#   helm/kind/load-images.sh gravitee-apim-ha         # load images into THIS cluster
+#   kubectl --context kind-gravitee-apim-ha apply -f \
+#     https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.11.3/deploy/static/provider/kind/deploy.yaml
+#   helm dependency build helm/
+#   helm install apim helm/ -n gravitee --create-namespace \
+#     -f helm/deploy/values-common.yaml \
+#     -f helm/kind/values-kind.yaml \
+#     -f helm/kind/values-kind-ha.yaml \
+#     --kube-context kind-gravitee-apim-ha
+#   # Console still at http://localhost:8081/console/
+#   kind delete cluster --name gravitee-apim-ha
+#
+# ⚠️ Needs more RAM than the single-node setup: 3 workers each carry 1 ES + 1 Mongo +
+# a Gravitee pod. Raise Docker Desktop memory to ~10-12GB (host has 16GB) or pods evict.
+#
+# 3 WORKERS = 3 schedulable nodes for the 3-member data layer (the control-plane keeps
+# its NoSchedule taint, so DB pods land on workers; ingress-nginx tolerates the taint
+# and pins to the ingress-ready control-plane, which owns the 8081/8444 host ports).
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+name: gravitee-apim-ha
+nodes:
+  - role: control-plane
+    kubeadmConfigPatches:
+      - |
+        kind: InitConfiguration
+        nodeRegistration:
+          kubeletExtraArgs:
+            node-labels: "ingress-ready=true"
+    extraPortMappings:
+      - containerPort: 80
+        hostPort: 8081
+        protocol: TCP
+      - containerPort: 443
+        hostPort: 8444
+        protocol: TCP
+  - role: worker
+  - role: worker
+  - role: worker

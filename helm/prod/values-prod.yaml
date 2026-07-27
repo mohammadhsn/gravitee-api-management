@@ -12,30 +12,37 @@
 # single point of failure by choice; durability comes from BACKUPS + fast recovery
 # (mongodump / ES snapshot -> off-cluster S3, restore onto a fresh PVC), NOT from
 # replication. Every Gravitee component is also 1 replica ("single everything").
-# Ingress is plain HTTP (TLS assumed terminated upstream / internal-only cluster).
+# TLS terminates at the ingress-nginx controller (MetalLB gives it the L4 VIP; nginx
+# does HTTPS + L7 routing). All five ingresses share one certificate in the secret
+# `apim-tls`. That secret must EXIST before/at deploy — provide it either way:
+#   - cert-manager: create ONE Certificate CR for host apim.example.com -> secret apim-tls
+#     (do NOT scatter cert-manager.io/cluster-issuer across all 5 ingresses — they would
+#      each spawn a Certificate fighting over the same secret). Or:
+#   - pre-provisioned: kubectl -n gravitee create secret tls apim-tls --cert=... --key=...
 #
 # ┌─ BEFORE DEPLOYING, replace these placeholders ─────────────────────────────┐
 # │  apim.example.com   -> your real prod host (appears in URLs + all ingresses)│
+# │  apim-tls           -> a TLS secret for that host (cert-manager or manual)  │
 # │  persistence.storageClass (commented) -> your cluster's node-local SC, or   │
 # │     leave commented to use the cluster default StorageClass                 │
 # │  ingressClassName: nginx -> your prod ingress class if different            │
 # └────────────────────────────────────────────────────────────────────────────┘
 
-# Real edge URLs. Plain HTTP on the standard port (:80), so — unlike kind's :8081 —
-# no port needs to appear in the URL. We still set these explicitly because the chart
-# hardcodes https for the console/portal/ui links, which is wrong for a plain-HTTP edge.
+# Real edge URLs. HTTPS on the standard port (:443) — TLS terminates at ingress-nginx —
+# so no port appears in the URL. Set explicitly so every derived console/portal/API link
+# is https and same-origin with the browser's address bar.
 installation:
   api:
-    url: http://apim.example.com
+    url: https://apim.example.com
   standalone:
     console:
       urls:
         - orgId: DEFAULT
-          url: http://apim.example.com/console
+          url: https://apim.example.com/console
     portal:
       urls:
         - envId: DEFAULT
-          url: http://apim.example.com/devportal
+          url: https://apim.example.com/devportal
 
 # ── MongoDB — 1-member replica set (single-node), production disk/resources ───
 mongodb:
@@ -89,21 +96,27 @@ api:
   # portalURL is the one hardcoded-https spot with a value hook (api-configmap uses
   # api.portalURL verbatim when set); the other four were patched to honor ingress
   # scheme. Plain http for the internal edge.
-  portalURL: http://apim.example.com
+  portalURL: https://apim.example.com
   resources:
     requests: { cpu: 500m, memory: 1Gi }
     limits:   { cpu: 2,    memory: 2Gi }
   ingress:
     management:
       ingressClassName: nginx
-      scheme: http
+      scheme: https
       hosts:
         - apim.example.com
+      tls:
+        - hosts: [apim.example.com]
+          secretName: apim-tls
     portal:
       ingressClassName: nginx
-      scheme: http
+      scheme: https
       hosts:
         - apim.example.com
+      tls:
+        - hosts: [apim.example.com]
+          secretName: apim-tls
 
 gateway:
   replicaCount: 1
@@ -116,10 +129,20 @@ gateway:
   ingress:
     ingressClassName: nginx
     # scheme feeds the patched gateway-entrypoint templates (console try-it + API
-    # portal.entrypoint); http for the internal edge.
-    scheme: http
+    # portal.entrypoint); https now that TLS terminates at the ingress controller.
+    scheme: https
     hosts:
       - apim.example.com
+    tls:
+      - hosts: [apim.example.com]
+        secretName: apim-tls
+    # Data-plane tuning: the gateway proxies real API traffic, so lift nginx's 1 MB
+    # body cap and stretch timeouts for streaming / SSE / WebSocket / long-poll APIs.
+    # (These belong ONLY on the gateway — the console/portal/mgmt ingresses don't need them.)
+    annotations:
+      nginx.ingress.kubernetes.io/proxy-body-size: "50m"       # set "0" for unlimited (weigh DoS risk)
+      nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
+      nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
 
 ui:
   replicaCount: 1
@@ -127,13 +150,16 @@ ui:
     tag: "4.11.6"
     pullPolicy: IfNotPresent
   # Console SPA calls the management API here (plain http, real host, standard port).
-  baseURL: http://apim.example.com/management/
+  baseURL: https://apim.example.com/management/
   ingress:
     ingressClassName: nginx
     # scheme feeds the patched portalURL derivation (api-configmap uses ui host).
-    scheme: http
+    scheme: https
     hosts:
       - apim.example.com
+    tls:
+      - hosts: [apim.example.com]
+        secretName: apim-tls
   resources:
     requests: { cpu: 50m, memory: 128Mi }
     limits:   { cpu: 500m, memory: 256Mi }
@@ -143,13 +169,16 @@ portal:
   image:
     tag: "latest"
     pullPolicy: IfNotPresent
-  baseURL: http://apim.example.com/portal
+  baseURL: https://apim.example.com/portal
   ingress:
     ingressClassName: nginx
     pathType: ImplementationSpecific
     path: /devportal(/.*)?
     hosts:
       - apim.example.com
+    tls:
+      - hosts: [apim.example.com]
+        secretName: apim-tls
     annotations:
       nginx.ingress.kubernetes.io/rewrite-target: /$1
   resources:

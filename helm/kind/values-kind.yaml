@@ -1,15 +1,14 @@
 # Minimal overlay for local kind (single node, ~6 GB Docker budget).
+# LAYER THIS ON TOP OF the shared bugfix overlay — it does not repeat those fixes:
 #   helm dependency build helm/
-#   helm install apim helm/ -n gravitee --create-namespace -f helm/kind/values-kind.yaml
+#   helm install apim helm/ -n gravitee --create-namespace \
+#     -f helm/deploy/values-common.yaml -f helm/kind/values-kind.yaml
 #
-# Trims: ES -> 1 all-roles node, Mongo -> 1-member replica set, Gravitee -> 1 replica each.
+# Contains ONLY kind-local concerns: shrink (ES -> 1 all-roles node, Mongo -> 1-member
+# replica set, Gravitee -> 1 replica each), localhost URLs, and IfNotPresent so kind
+# reuses `kind load`ed images. The Bitnami legacy-image / securityContext / os-shell
+# fixes live in helm/deploy/values-common.yaml (required by every environment).
 # Storage: kind's default StorageClass (rancher.io/local-path) provisions PVCs on node disk.
-
-# Bitnami moved images to `bitnamilegacy/*`; their charts refuse "non-standard"
-# images unless this guard is lifted.
-global:
-  security:
-    allowInsecureImages: true
 
 # All these URLs are otherwise derived from the ingress *host* only (no port, and
 # https for the console/portal), which is wrong behind the :8081 edge:
@@ -38,18 +37,6 @@ mongodb:
   replicaCount: 1
   arbiter:
     enabled: false
-  # The bitnamilegacy mongodb image isn't hardened-compatible: as UID 1001 with a
-  # read-only rootfs it can't read its own config. Run as the image's intended user
-  # (disable the chart's securityContext hardening) and use a root volume-permissions
-  # init to create/chown the data dir. (os-shell also moved to bitnamilegacy.)
-  volumePermissions:
-    enabled: true
-    image:
-      repository: bitnamilegacy/os-shell
-  podSecurityContext:
-    enabled: false
-  containerSecurityContext:
-    enabled: false
   persistence:
     size: 1Gi
   resources:
@@ -60,12 +47,6 @@ mongodb:
 # Single node that carries ALL roles (masterOnly=false); other roles disabled.
 elasticsearch:
   enabled: true
-  # os-shell moved to bitnamilegacy too (chart still points at the dead bitnami/os-shell).
-  sysctlImage:
-    repository: bitnamilegacy/os-shell
-  volumePermissions:
-    image:
-      repository: bitnamilegacy/os-shell
   master:
     masterOnly: false
     replicaCount: 1

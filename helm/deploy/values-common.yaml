@@ -1,0 +1,42 @@
+# Shared overrides required by EVERY deployment of this chart (kind, staging, prod).
+# These are NOT environment tuning — they are workarounds for bugs/gaps in the
+# chart's own defaults, so any overlay (values-kind.yaml, values-prod.yaml, ...)
+# must be layered ON TOP of this file:
+#
+#   helm install apim helm/ -n gravitee -f helm/deploy/values-common.yaml -f <overlay>.yaml
+#
+# All three are consequences of the chart shipping Bitnami's relocated images and
+# should ideally be fixed upstream (then this file shrinks). See the notes per block.
+
+# (1) The chart's own values.yaml already defaults the MAIN db images to
+#     bitnamilegacy/{mongodb,elasticsearch}. The Bitnami subchart's image guard
+#     rejects those "non-standard" repos unless this is lifted. Required chart-wide.
+global:
+  security:
+    allowInsecureImages: true
+
+mongodb:
+  # (2) The chart relocated the main image to bitnamilegacy but left the init
+  #     (volume-permissions) image pointing at the dead docker.io/bitnami/os-shell.
+  # (3) The bitnamilegacy mongodb image can't start under the subchart's hardened
+  #     securityContext (read-only rootfs / UID 1001 -> "mongodb.conf: Permission
+  #     denied"). Disable the hardening and let a root volume-permissions init set
+  #     up the data dir. NOTE: this is a security-posture downgrade — revisit once
+  #     the image/hardening incompatibility is resolved upstream.
+  volumePermissions:
+    enabled: true
+    image:
+      repository: bitnamilegacy/os-shell
+  podSecurityContext:
+    enabled: false
+  containerSecurityContext:
+    enabled: false
+
+elasticsearch:
+  # (2) Same init-image relocation gap: sysctl + volume-permissions inits still
+  #     default to the dead bitnami/os-shell.
+  sysctlImage:
+    repository: bitnamilegacy/os-shell
+  volumePermissions:
+    image:
+      repository: bitnamilegacy/os-shell

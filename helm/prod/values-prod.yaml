@@ -1,0 +1,157 @@
+# Production overlay — SINGLE-NODE data layer, same topology as the kind setup,
+# but with real hostnames, production resources, and larger persistence.
+# Layer it on the shared bugfix overlay:
+#
+#   helm install apim helm/ -n gravitee --create-namespace \
+#     -f helm/deploy/values-common.yaml \
+#     -f helm/prod/values-prod.yaml \
+#     --kube-context <prod-context>
+#
+# Intentional design (confirmed): the DATA LAYER is single-node — Elasticsearch is one
+# all-role node (no shard replicas), MongoDB is a 1-member replica set. This is a
+# single point of failure by choice; durability comes from BACKUPS + fast recovery
+# (mongodump / ES snapshot -> off-cluster S3, restore onto a fresh PVC), NOT from
+# replication. Every Gravitee component is also 1 replica ("single everything").
+# Ingress is plain HTTP (TLS assumed terminated upstream / internal-only cluster).
+#
+# ┌─ BEFORE DEPLOYING, replace these placeholders ─────────────────────────────┐
+# │  apim.example.com   -> your real prod host (appears in URLs + all ingresses)│
+# │  persistence.storageClass (commented) -> your cluster's node-local SC, or   │
+# │     leave commented to use the cluster default StorageClass                 │
+# │  ingressClassName: nginx -> your prod ingress class if different            │
+# └────────────────────────────────────────────────────────────────────────────┘
+
+# Real edge URLs. Plain HTTP on the standard port (:80), so — unlike kind's :8081 —
+# no port needs to appear in the URL. We still set these explicitly because the chart
+# hardcodes https for the console/portal/ui links, which is wrong for a plain-HTTP edge.
+installation:
+  api:
+    url: http://apim.example.com
+  standalone:
+    console:
+      urls:
+        - orgId: DEFAULT
+          url: http://apim.example.com/console
+    portal:
+      urls:
+        - envId: DEFAULT
+          url: http://apim.example.com/devportal
+
+# ── MongoDB — 1-member replica set (single-node), production disk/resources ───
+mongodb:
+  enabled: true
+  replicaCount: 1
+  arbiter:
+    enabled: false
+  persistence:
+    size: 20Gi
+    # storageClass: <your-node-local-sc>   # omit -> cluster default
+  resources:
+    requests: { cpu: 250m, memory: 1Gi }
+    limits:   { cpu: 1,    memory: 2Gi }
+
+# ── Elasticsearch — 1 all-role node (single-node), production heap/disk ───────
+elasticsearch:
+  enabled: true
+  master:
+    masterOnly: false
+    replicaCount: 1
+    heapSize: 2048m
+    persistence:
+      size: 30Gi
+      # storageClass: <your-node-local-sc>
+    resources:
+      requests: { cpu: 500m, memory: 3Gi }
+      limits:   { cpu: 2,    memory: 4Gi }
+  data:
+    replicaCount: 0
+  coordinating:
+    replicaCount: 0
+  ingest:
+    replicaCount: 0
+
+# Point the API at the single master node's headless service (the default ingest-hl
+# service doesn't exist without dedicated ingest nodes), and keep 0 shard replicas so
+# a single-node cluster is green (not yellow). Same as kind — single-node ES.
+es:
+  endpoints:
+    - http://graviteeio-apim-elasticsearch-master-hl:9200
+  settings:
+    number_of_shards: 1
+    number_of_replicas: 0
+
+# ── Gravitee components — single everything ──────────────────────────────────
+api:
+  replicaCount: 1
+  image:
+    tag: "4.11.6"
+    pullPolicy: IfNotPresent
+  # portalURL is the one hardcoded-https spot with a value hook (api-configmap uses
+  # api.portalURL verbatim when set); the other four were patched to honor ingress
+  # scheme. Plain http for the internal edge.
+  portalURL: http://apim.example.com
+  resources:
+    requests: { cpu: 500m, memory: 1Gi }
+    limits:   { cpu: 2,    memory: 2Gi }
+  ingress:
+    management:
+      ingressClassName: nginx
+      scheme: http
+      hosts:
+        - apim.example.com
+    portal:
+      ingressClassName: nginx
+      scheme: http
+      hosts:
+        - apim.example.com
+
+gateway:
+  replicaCount: 1
+  image:
+    tag: "4.11.6"
+    pullPolicy: IfNotPresent
+  resources:
+    requests: { cpu: 500m, memory: 768Mi }
+    limits:   { cpu: 2,    memory: 1536Mi }
+  ingress:
+    ingressClassName: nginx
+    # scheme feeds the patched gateway-entrypoint templates (console try-it + API
+    # portal.entrypoint); http for the internal edge.
+    scheme: http
+    hosts:
+      - apim.example.com
+
+ui:
+  replicaCount: 1
+  image:
+    tag: "4.11.6"
+    pullPolicy: IfNotPresent
+  # Console SPA calls the management API here (plain http, real host, standard port).
+  baseURL: http://apim.example.com/management/
+  ingress:
+    ingressClassName: nginx
+    # scheme feeds the patched portalURL derivation (api-configmap uses ui host).
+    scheme: http
+    hosts:
+      - apim.example.com
+  resources:
+    requests: { cpu: 50m, memory: 128Mi }
+    limits:   { cpu: 500m, memory: 256Mi }
+
+portal:
+  replicaCount: 1
+  image:
+    tag: "latest"
+    pullPolicy: IfNotPresent
+  baseURL: http://apim.example.com/portal
+  ingress:
+    ingressClassName: nginx
+    pathType: ImplementationSpecific
+    path: /devportal(/.*)?
+    hosts:
+      - apim.example.com
+    annotations:
+      nginx.ingress.kubernetes.io/rewrite-target: /$1
+  resources:
+    requests: { cpu: 50m, memory: 128Mi }
+    limits:   { cpu: 500m, memory: 256Mi }

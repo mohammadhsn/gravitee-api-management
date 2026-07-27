@@ -1,0 +1,26 @@
+# MetalLB L2 address pool for the kind prod-mirror.
+#
+# Uses the TOP of kind's docker network /16 (default 172.18.0.0/16 — node IPs start low,
+# so .255.200-.255.250 won't collide). VERIFY the subnet before applying:
+#   docker network inspect kind --format '{{range .IPAM.Config}}{{.Subnet}}{{end}}'
+# If it isn't 172.18.0.0/16, edit the addresses below to match.
+#
+# L2 (ARP) mode: one node answers ARP for the VIP at a time — the standard, no-network-gear
+# choice, and what a small on-prem prod cluster typically uses too.
+apiVersion: metallb.io/v1beta1
+kind: IPAddressPool
+metadata:
+  name: gravitee-pool
+  namespace: metallb-system
+spec:
+  addresses:
+    - 172.18.255.200-172.18.255.250
+---
+apiVersion: metallb.io/v1beta1
+kind: L2Advertisement
+metadata:
+  name: gravitee-l2
+  namespace: metallb-system
+spec:
+  ipAddressPools:
+    - gravitee-pool

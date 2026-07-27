@@ -8,6 +8,11 @@
 #   helm/kind/load-images.sh                 # cluster: gravitee-apim
 #   helm/kind/load-images.sh my-cluster
 #
+# ⚠️ Docker Desktop's "Use containerd for pulling and storing images" MUST be OFF.
+# With the containerd image store ON, `kind load docker-image` fails with
+# `ctr: content digest <sha> not found` (it exports a multi-platform manifest whose
+# other-arch blobs aren't local). Turn it off in Settings → General, then re-pull.
+#
 set -euo pipefail
 CLUSTER="${1:-gravitee-apim}"
 
@@ -38,14 +43,22 @@ INGRESS_IMAGES=(
     registry.k8s.io/ingress-nginx/kube-webhook-certgen:v1.4.4
 )
 
-echo ">> Pulling Bitnami images on the host (avoids the throttled in-cluster pulls)..."
-for img in "${BITNAMI_IMAGES[@]}"; do
+# MetalLB images (quay.io) — needed only by the prod-mirror cluster (kind-cluster-prod.yaml),
+# which uses a real LoadBalancer VIP instead of extraPortMappings. quay.io is usually
+# reachable; pulled here like the Bitnami set, then loaded. Harmless for the other clusters.
+METALLB_IMAGES=(
+    quay.io/metallb/controller:v0.14.8
+    quay.io/metallb/speaker:v0.14.8
+)
+
+echo ">> Pulling Bitnami + MetalLB images on the host (avoids the throttled in-cluster pulls)..."
+for img in "${BITNAMI_IMAGES[@]}" "${METALLB_IMAGES[@]}"; do
     echo "   docker pull $img"
     docker pull "$img" >/dev/null
 done
 
-echo ">> Loading Gravitee + Bitnami images into kind cluster '$CLUSTER'..."
-kind load docker-image "${GRAVITEE_IMAGES[@]}" "${BITNAMI_IMAGES[@]}" --name "$CLUSTER"
+echo ">> Loading Gravitee + Bitnami + MetalLB images into kind cluster '$CLUSTER'..."
+kind load docker-image "${GRAVITEE_IMAGES[@]}" "${BITNAMI_IMAGES[@]}" "${METALLB_IMAGES[@]}" --name "$CLUSTER"
 
 echo ">> Loading ingress-nginx images (only those already pulled locally)..."
 for img in "${INGRESS_IMAGES[@]}"; do

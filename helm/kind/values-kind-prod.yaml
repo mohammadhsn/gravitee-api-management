@@ -1,0 +1,52 @@
+# PROD REHEARSAL on kind — the smallest possible delta from the real prod overlay.
+# Layer it LAST, on top of common + prod:
+#
+#   -f helm/deploy/values-common.yaml \
+#   -f helm/prod/values-prod.yaml \
+#   -f helm/kind/values-kind-prod.yaml
+#
+# Everything that DEFINES prod behavior is inherited from values-prod.yaml unchanged:
+#   - single-node data layer (1 ES all-role, 1-member Mongo RS)
+#   - TLS terminated at ingress-nginx (secret apim-tls), https edge URLs
+#   - host apim.example.com, ingressClassName nginx, gateway body-size/timeout annotations
+#   - image tags + pullPolicy IfNotPresent (so kind reuses `kind load`ed images)
+#
+# This file ONLY shrinks heap/disk/cpu so the stack fits a laptop. The TRAFFIC PATH is
+# identical to prod: MetalLB LoadBalancer IP -> ingress-nginx -> Ingress -> ClusterIP svc.
+# Requires: multi-node kind (kind-cluster-prod.yaml) + MetalLB + ingress-nginx(LoadBalancer).
+
+elasticsearch:
+  master:
+    heapSize: 512m
+    persistence:
+      size: 4Gi
+    resources:
+      requests: { cpu: 100m, memory: 700Mi }
+      limits:   { cpu: 1,    memory: 1300Mi }
+
+mongodb:
+  persistence:
+    size: 1Gi
+  resources:
+    requests: { cpu: 50m, memory: 256Mi }
+    limits:   { cpu: 500m, memory: 512Mi }
+
+api:
+  resources:
+    requests: { cpu: 100m, memory: 512Mi }
+    limits:   { cpu: 1,    memory: 1024Mi }
+
+gateway:
+  resources:
+    requests: { cpu: 100m, memory: 384Mi }
+    limits:   { cpu: 1,    memory: 768Mi }
+
+ui:
+  resources:
+    requests: { cpu: 25m,  memory: 64Mi }
+    limits:   { cpu: 250m, memory: 128Mi }
+
+portal:
+  resources:
+    requests: { cpu: 25m,  memory: 64Mi }
+    limits:   { cpu: 250m, memory: 128Mi }

@@ -1,0 +1,42 @@
+# Multi-node kind cluster that MIRRORS the prod kubeadm topology for the prod rehearsal.
+#
+# Unlike kind-cluster.yaml (single node + extraPortMappings shortcut), this uses the REAL
+# prod traffic path: MetalLB assigns a LoadBalancer IP to the ingress-nginx Service, exactly
+# like prod. There are deliberately NO extraPortMappings — the entrypoint is the MetalLB VIP.
+#
+# 3 nodes (1 control-plane + 2 workers) ≈ prod's 3-node cluster. The data layer is still
+# single-node (1 ES, 1 Mongo) per the prod decision; it schedules onto a worker fine.
+#
+# Full workflow (or just run helm/kind/up-prod-mirror.sh):
+#   kind create cluster --config helm/kind/kind-cluster-prod.yaml
+#   helm/kind/load-images.sh gravitee-prod-mirror
+#   # MetalLB (native manifest + our L2 pool):
+#   kubectl --context kind-gravitee-prod-mirror apply -f \
+#     https://raw.githubusercontent.com/metallb/metallb/v0.14.8/config/manifests/metallb-native.yaml
+#   kubectl --context kind-gravitee-prod-mirror -n metallb-system rollout status deploy/controller
+#   kubectl --context kind-gravitee-prod-mirror apply -f helm/kind/metallb-pool.yaml
+#   # ingress-nginx (baremetal manifest) patched to Service type LoadBalancer -> MetalLB IP:
+#   kubectl --context kind-gravitee-prod-mirror apply -f \
+#     https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.11.3/deploy/static/provider/baremetal/deploy.yaml
+#   kubectl --context kind-gravitee-prod-mirror -n ingress-nginx patch svc ingress-nginx-controller \
+#     -p '{"spec":{"type":"LoadBalancer","externalTrafficPolicy":"Local"}}'
+#   # TLS secret for apim.example.com (self-signed for local; cert-manager in prod):
+#   #   openssl req -x509 -newkey rsa:2048 -nodes -keyout tls.key -out tls.crt \
+#   #     -days 365 -subj "/CN=apim.example.com" -addext "subjectAltName=DNS:apim.example.com"
+#   #   kubectl -n gravitee create secret tls apim-tls --cert=tls.crt --key=tls.key
+#   helm install apim helm/ -n gravitee --create-namespace \
+#     -f helm/deploy/values-common.yaml -f helm/prod/values-prod.yaml -f helm/kind/values-kind-prod.yaml \
+#     --kube-context kind-gravitee-prod-mirror
+#
+# Reaching it on macOS: the MetalLB VIP lives on the kind docker network (172.18.0.0/16),
+# which is NOT routable from the Mac host. Verify the full path from inside the network
+# (docker exec <node> curl -k --resolve apim.example.com:443:<VIP> https://apim.example.com/console),
+# and for a browser use `kubectl port-forward -n ingress-nginx svc/ingress-nginx-controller
+# 8443:443`. On real prod the VIP is LAN-routable, so neither shim is needed.
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+name: gravitee-prod-mirror
+nodes:
+  - role: control-plane
+  - role: worker
+  - role: worker

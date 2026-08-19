@@ -12,9 +12,16 @@
 # single point of failure by choice; durability comes from BACKUPS + fast recovery
 # (mongodump / ES snapshot -> off-cluster S3, restore onto a fresh PVC), NOT from
 # replication. Every Gravitee component is also 1 replica ("single everything").
-# TLS terminates at the ingress-nginx controller (MetalLB gives it the L4 VIP; nginx
-# does HTTPS + L7 routing). All five ingresses share one certificate in the secret
-# `apim-tls`. That secret must EXIST before/at deploy — provide it either way:
+# EDGE IS PRE-EXISTING: MetalLB and ingress-nginx are installed and owned by the platform
+# on the prod cluster. This overlay does NOT create them — it only emits Ingress resources
+# that ATTACH to the platform's controller via `ingressClassName` + host. So the values
+# below must MATCH what that controller already expects (see helm/prod/DEPLOY-BAREMETAL.md
+# §2 for the read-only discovery commands). Never patch the shared controller or its
+# Service to suit this chart.
+#
+# TLS terminates at the ingress-nginx controller (the platform's MetalLB provides its L4
+# VIP; nginx does HTTPS + L7 routing). All five ingresses share one certificate in the
+# secret `apim-tls`, which lives in OUR namespace. It must EXIST before/at deploy:
 #   - cert-manager: create ONE Certificate CR for host apim.example.com -> secret apim-tls
 #     (do NOT scatter cert-manager.io/cluster-issuer across all 5 ingresses — they would
 #      each spawn a Certificate fighting over the same secret). Or:
@@ -25,7 +32,9 @@
 # │  apim-tls           -> a TLS secret for that host (cert-manager or manual)  │
 # │  persistence.storageClass (commented) -> your cluster's node-local SC, or   │
 # │     leave commented to use the cluster default StorageClass                 │
-# │  ingressClassName: nginx -> your prod ingress class if different            │
+# │  ingressClassName: nginx -> MUST match the platform's existing IngressClass │
+# │     (5 places). Verify with: kubectl get ingressclass — an unmatched class   │
+# │     means the controller silently ignores our Ingresses (ADDRESS stays empty)│
 # └────────────────────────────────────────────────────────────────────────────┘
 
 # Real edge URLs. HTTPS on the standard port (:443) — TLS terminates at ingress-nginx —
@@ -170,6 +179,31 @@ portal:
     tag: "latest"
     pullPolicy: IfNotPresent
   baseURL: https://apim.example.com/portal
+  # ── Portal API URL: RELATIVE, on purpose ─────────────────────────────────────
+  # The Portal SPA reads PORTAL_API_URL at container start. The chart builds that env
+  # var as an ABSOLUTE url from api.ingress.portal (scheme://host/path/), and NOT from
+  # portal.baseURL above — so baseURL alone cannot fix it. An absolute value means the
+  # SPA calls that exact origin, and if the browser's origin differs in ANY component
+  # (scheme, host/alias, or port) the bootstrap call becomes CROSS-ORIGIN and gets
+  # blocked as CORS — even though /devportal and /portal are served by the same edge.
+  #
+  # A relative "/portal" resolves against whatever origin the page was loaded from, so
+  # the call is same-origin by construction and CORS never engages. This is exactly what
+  # the docker-compose stack does (PORTAL_API_URL=/portal in
+  # docker/quick-setup/nginx/docker-compose.yml), which is why the problem never appears
+  # there. It also makes the deploy immune to being reached via an alias, a raw IP, a
+  # non-443 port, or a port-forward.
+  #
+  # This env entry is appended AFTER the chart's built-in PORTAL_API_URL, so the pod spec
+  # carries the name twice and the LAST one wins. Untidy but deliberate — it is the only
+  # way to override that value without patching the template.
+  #
+  # ONLY revert to an absolute URL if you ever serve the Portal UI and the Portal API
+  # from DIFFERENT hosts. With this chart all five ingresses share one host, so relative
+  # is correct.
+  env:
+    - name: PORTAL_API_URL
+      value: /portal
   ingress:
     ingressClassName: nginx
     pathType: ImplementationSpecific

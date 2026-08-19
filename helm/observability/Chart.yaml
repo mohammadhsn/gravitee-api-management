@@ -1,0 +1,16 @@
+apiVersion: v2
+name: gravitee-observability
+description: >-
+  Observability companion for the Gravitee APIM chart — Prometheus + Grafana (metrics),
+  Kibana (queries the Gravitee analytics indices), and Logstash (log ingest). Deployed as
+  its OWN release alongside `apim`, so bumping the upstream Gravitee chart never conflicts
+  with these workloads. Mirrors docker/quick-setup/keycloak's observability services.
+type: application
+version: 0.1.0
+appVersion: "1.0"
+keywords:
+  - gravitee
+  - observability
+  - prometheus
+  - grafana
+  - kibana

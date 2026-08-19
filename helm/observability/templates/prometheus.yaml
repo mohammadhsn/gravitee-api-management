@@ -1,0 +1,155 @@
+{{- if .Values.prometheus.enabled }}
+{{- $name := printf "%s-prometheus" (include "obs.fullname" .) }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ $name }}
+  labels:
+    {{- include "obs.labels" . | nindent 4 }}
+data:
+  prometheus.yml: |
+    # Scrape the Gravitee node API's Micrometer/Prometheus registry.
+    # Requires helm/prod/values-observability.yaml on the APIM release:
+    #   services.metrics.enabled=true, core.http.host=0.0.0.0, core.service.enabled=true
+    global:
+      scrape_interval: {{ .Values.prometheus.scrapeInterval }}
+    scrape_configs:
+      - job_name: 'gio-gateway'
+        metrics_path: /_node/metrics/prometheus
+        basic_auth:
+          username: {{ .Values.targets.auth.username }}
+          password_file: /etc/prometheus/auth/password
+        static_configs:
+          - targets: ['{{ .Values.targets.gateway.service }}:{{ .Values.targets.gateway.port }}']
+      - job_name: 'gio-mgmt-api'
+        metrics_path: /_node/metrics/prometheus
+        basic_auth:
+          username: {{ .Values.targets.auth.username }}
+          password_file: /etc/prometheus/auth/password
+        static_configs:
+          - targets: ['{{ .Values.targets.api.service }}:{{ .Values.targets.api.port }}']
+---
+{{- if not .Values.targets.auth.existingSecret }}
+apiVersion: v1
+kind: Secret
+metadata:
+  name: {{ $name }}-auth
+  labels:
+    {{- include "obs.labels" . | nindent 4 }}
+type: Opaque
+stringData:
+  # Read via password_file so the credential never appears in the ConfigMap.
+  password: {{ .Values.targets.auth.password | quote }}
+---
+{{- end }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ $name }}
+  labels:
+    {{- include "obs.labels" . | nindent 4 }}
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: {{ $name }}
+  ports:
+    - name: http
+      port: 9090
+      targetPort: 9090
+{{- if .Values.prometheus.persistence.enabled }}
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ $name }}
+  labels:
+    {{- include "obs.labels" . | nindent 4 }}
+spec:
+  accessModes: [ReadWriteOnce]
+  resources:
+    requests:
+      storage: {{ .Values.prometheus.persistence.size }}
+  {{- with .Values.prometheus.persistence.storageClass }}
+  storageClassName: {{ . }}
+  {{- end }}
+{{- end }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ $name }}
+  labels:
+    {{- include "obs.labels" . | nindent 4 }}
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate            # single RWO volume — never two writers
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: {{ $name }}
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: {{ $name }}
+        {{- include "obs.labels" . | nindent 8 }}
+      annotations:
+        checksum/config: {{ .Values.prometheus.scrapeInterval | toString | sha256sum }}
+    spec:
+      securityContext:
+        # Official image runs as nobody(65534); the PV must be writable by it.
+        fsGroup: 65534
+        runAsUser: 65534
+        runAsNonRoot: true
+      containers:
+        - name: prometheus
+          image: {{ include "obs.image" (dict "ctx" $ "image" .Values.prometheus.image) }}
+          args:
+            - "--config.file=/etc/prometheus/prometheus.yml"
+            - "--storage.tsdb.path=/prometheus"
+            - "--storage.tsdb.retention.time={{ .Values.prometheus.retention }}"
+            # Serves AND advertises itself under the sub-path, so redirects and the
+            # API base URL stay correct behind the shared ingress.
+            - "--web.external-url={{ if .Values.ingress.enabled }}{{ if .Values.ingress.tls.enabled }}https{{ else }}http{{ end }}://{{ .Values.ingress.host }}{{ .Values.prometheus.path }}{{ else }}http://localhost:9090{{ end }}"
+            - "--web.route-prefix={{ .Values.prometheus.path }}"
+          ports:
+            - name: http
+              containerPort: 9090
+          readinessProbe:
+            httpGet:
+              path: {{ .Values.prometheus.path }}/-/ready
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: {{ .Values.prometheus.path }}/-/healthy
+              port: http
+            initialDelaySeconds: 30
+            periodSeconds: 30
+          resources:
+            {{- toYaml .Values.prometheus.resources | nindent 12 }}
+          volumeMounts:
+            - name: config
+              mountPath: /etc/prometheus
+            - name: auth
+              mountPath: /etc/prometheus/auth
+              readOnly: true
+            - name: data
+              mountPath: /prometheus
+      volumes:
+        - name: config
+          configMap:
+            name: {{ $name }}
+        - name: auth
+          secret:
+            secretName: {{ .Values.targets.auth.existingSecret | default (printf "%s-auth" $name) }}
+        - name: data
+          {{- if .Values.prometheus.persistence.enabled }}
+          persistentVolumeClaim:
+            claimName: {{ $name }}
+          {{- else }}
+          emptyDir: {}
+          {{- end }}
+---
+{{ include "obs.ingress" (dict "ctx" . "name" "prometheus" "path" .Values.prometheus.path "svc" $name "port" 9090) }}
+{{- end }}

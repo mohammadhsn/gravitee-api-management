@@ -1,0 +1,115 @@
+# Observability companion chart — defaults.
+#
+# Install into the SAME namespace as the apim release: every cross-reference below uses
+# a short in-namespace DNS name (apim-api, graviteeio-apim-elasticsearch, ...).
+#
+#   helm install obs helm/observability/ -n gravitee \
+#     -f helm/observability/values-prod.yaml     # your host/class/TLS overrides
+#
+# ⚠️ REQUIRES the APIM release to have helm/prod/values-observability.yaml applied first.
+# Without it the Gravitee node APIs are either disabled or bound to localhost and every
+# Prometheus target shows DOWN.
+
+# ── Air-gap: set this once and all four images below are pulled from your registry ──
+# Mirror them with helm/prod/mirror-images.sh (they are in its image list).
+global:
+  imageRegistry: ""          # e.g. registry.internal  -> registry.internal/grafana/grafana:11.3.1
+
+# ── Shared edge settings (same host as APIM; extra paths alongside /console etc.) ──
+ingress:
+  enabled: true
+  ingressClassName: nginx
+  host: apim.example.com
+  # Reuses the SAME TLS secret as the APIM ingresses — one cert, one host.
+  tls:
+    enabled: true
+    secretName: apim-tls
+  annotations: {}
+
+# ── Where to find the things we observe (in-namespace service names) ──────────
+# These are the DEFAULT names produced by `helm install apim ...`. If you used a
+# different release name, update them.
+targets:
+  gateway:
+    service: apim-gateway
+    port: 18082
+  api:
+    service: apim-api
+    port: 18083
+  # Basic auth on the Gravitee node API. MUST match
+  # {api,gateway}.services.core.http.authentication.password in the APIM release.
+  # Chart default is `adminadmin`. Move to existingSecret before exposing anything.
+  auth:
+    username: admin
+    password: adminadmin
+    existingSecret: ""        # optional: secret with keys `username` / `password`
+  elasticsearch:
+    url: http://graviteeio-apim-elasticsearch:9200
+
+# ── Prometheus ───────────────────────────────────────────────────────────────
+prometheus:
+  enabled: true
+  image: prom/prometheus:v2.53.2
+  path: /prometheus
+  retention: 15d
+  scrapeInterval: 15s
+  persistence:
+    enabled: true
+    size: 8Gi
+    storageClass: ""
+  resources:
+    requests: { cpu: 100m, memory: 512Mi }
+    limits:   { cpu: 1,    memory: 1Gi }
+
+# ── Grafana ──────────────────────────────────────────────────────────────────
+grafana:
+  enabled: true
+  image: grafana/grafana:11.3.1
+  path: /grafana
+  # Change this. Grafana refuses to start with an empty admin password.
+  adminUser: admin
+  adminPassword: admin
+  existingSecret: ""          # optional: secret with keys `admin-user` / `admin-password`
+  persistence:
+    enabled: true
+    size: 2Gi
+    storageClass: ""
+  resources:
+    requests: { cpu: 50m,  memory: 128Mi }
+    limits:   { cpu: 500m, memory: 512Mi }
+
+# ── Kibana ───────────────────────────────────────────────────────────────────
+# Points at the SAME Elasticsearch the Gravitee reporter writes to, so it can query the
+# gravitee-* analytics indices directly. Read-only consumer; adds no ingest load.
+kibana:
+  enabled: true
+  image: docker.elastic.co/kibana/kibana:8.17.2
+  path: /kibana
+  resources:
+    requests: { cpu: 100m, memory: 512Mi }
+    limits:   { cpu: 1,    memory: 1536Mi }
+
+# ── Logstash ─────────────────────────────────────────────────────────────────
+# ⚠️ READ THIS BEFORE ENABLING.
+# Logstash here is an INGEST ENDPOINT, not a collector. Its only input is `beats` on
+# 5044 and the pipeline does NO parsing — it forwards raw events to
+# elasticsearch:9200 index logs-YYYY.MM.dd (identical to the compose pipeline).
+#
+# In compose, Filebeat fed it. On Kubernetes there is deliberately NO Filebeat in this
+# chart: container stdout is collected by the platform's own node-level agent, and a
+# second DaemonSet mounting the container runtime socket duplicates logs and needs
+# root-on-node. So Logstash starts and sits IDLE until something ships to it.
+#
+# Enable it only if you have a producer: point the platform's collector (or any
+# beats/lumberjack-capable shipper) at logstash:5044. Otherwise leave it off — nothing
+# is lost, because Gravitee's ANALYTICS never flowed through Logstash. They go straight
+# from the gateway's Elasticsearch reporter into the gravitee-* indices.
+logstash:
+  enabled: false
+  image: docker.elastic.co/logstash/logstash:8.17.2
+  beatsPort: 5044
+  indexPattern: "logs-%{+YYYY.MM.dd}"
+  javaOpts: "-Xms512m -Xmx512m"
+  resources:
+    requests: { cpu: 100m, memory: 768Mi }
+    limits:   { cpu: 1,    memory: 1536Mi }

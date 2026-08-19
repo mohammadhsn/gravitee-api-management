@@ -1,0 +1,66 @@
+# OBSERVABILITY overlay for the APIM release — turns the metrics endpoints ON.
+# Layer it after the environment overlay:
+#
+#   helm upgrade apim ./apim-4.11.0.tgz -n gravitee \
+#     -f helm/deploy/values-common.yaml \
+#     -f helm/prod/values-prod.yaml \
+#     -f helm/prod/values-observability.yaml
+#
+# This file ONLY changes the APIM release. The Prometheus/Grafana/Kibana/Logstash
+# workloads live in the companion chart helm/observability/ (separate release), so a
+# Gravitee chart bump never conflicts with them.
+#
+# Three things must ALL be true before Prometheus can scrape a Gravitee node — miss any
+# one and the target shows DOWN with no useful error:
+#   (1) the Micrometer/Prometheus registry is enabled          -> services.metrics.enabled
+#   (2) the node API listens on a non-loopback address          -> services.core.http.host
+#   (3) the node API port is on the ClusterIP Service           -> services.core.service.enabled
+#
+# The node API is protected by BASIC AUTH (user `admin`, password from
+# services.core.http.authentication.password, chart default `adminadmin`). The scrape
+# config in the companion chart must match it. Change both together, and move the
+# password into a Secret before this is anything but an internal endpoint.
+
+api:
+  services:
+    metrics:
+      enabled: true          # (1) exposes /_node/metrics/prometheus
+      prometheus:
+        enabled: true
+  http:
+    services:
+      core:
+        http:
+          # (2) ⚠️ The chart default for the MANAGEMENT API is `localhost`, which means the
+          # node API answers only inside the pod's own netns — a scrape from another pod
+          # connects and gets nothing. The gateway already defaults to 0.0.0.0; only the
+          # API needs this. (The chart's own comment next to `service.enabled` says the
+          # same thing.) This is exactly what the compose stack sets via
+          # gravitee_services_core_http_host=0.0.0.0.
+          host: 0.0.0.0
+          port: 18083
+        service:
+          # (3) adds the port named "<api>-technical" to the apim-api Service.
+          # externalPort is COMMENTED OUT in the chart defaults, so it must be given
+          # explicitly here — the template dereferences it and would otherwise render
+          # an empty port and fail schema validation.
+          enabled: true
+          type: ClusterIP
+          externalPort: 18083
+          appProtocol: http
+
+gateway:
+  services:
+    metrics:
+      enabled: true          # (1)
+      prometheus:
+        enabled: true
+    core:
+      http:
+        host: 0.0.0.0        # (2) already the chart default; pinned so it cannot regress
+        port: 18082
+      service:
+        enabled: true        # (3) adds "<gateway>-technical" to the apim-gateway Service
+        type: ClusterIP
+        externalPort: 18082
+        appProtocol: http

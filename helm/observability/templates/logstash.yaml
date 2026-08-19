@@ -1,0 +1,94 @@
+{{- if .Values.logstash.enabled }}
+{{- $name := printf "%s-logstash" (include "obs.fullname" .) }}
+# ⚠️ INERT WITHOUT A PRODUCER. This is an ingest ENDPOINT (beats/5044), not a collector.
+# There is no Filebeat in this chart on purpose — see the logstash block in values.yaml.
+# Point the platform's log collector at {{ $name }}:{{ .Values.logstash.beatsPort }} or
+# nothing will ever arrive. Gravitee's analytics do NOT come through here.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ $name }}
+  labels:
+    {{- include "obs.labels" . | nindent 4 }}
+data:
+  logstash.yml: |
+    http.host: "0.0.0.0"
+    xpack.monitoring.enabled: false
+  logstash.conf: |
+    # Ship events RAW (no grok), same as the compose pipeline. Writes to logs-* so it
+    # never collides with Gravitee's gravitee-* analytics indices.
+    input {
+      beats {
+        port => {{ .Values.logstash.beatsPort }}
+      }
+    }
+    output {
+      elasticsearch {
+        hosts => ["{{ .Values.targets.elasticsearch.url }}"]
+        index => "{{ .Values.logstash.indexPattern }}"
+      }
+    }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ $name }}
+  labels:
+    {{- include "obs.labels" . | nindent 4 }}
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: {{ $name }}
+  ports:
+    - name: beats
+      port: {{ .Values.logstash.beatsPort }}
+      targetPort: {{ .Values.logstash.beatsPort }}
+      protocol: TCP
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ $name }}
+  labels:
+    {{- include "obs.labels" . | nindent 4 }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: {{ $name }}
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: {{ $name }}
+        {{- include "obs.labels" . | nindent 8 }}
+    spec:
+      containers:
+        - name: logstash
+          image: {{ include "obs.image" (dict "ctx" $ "image" .Values.logstash.image) }}
+          env:
+            - name: LS_JAVA_OPTS
+              value: {{ .Values.logstash.javaOpts | quote }}
+          ports:
+            - name: beats
+              containerPort: {{ .Values.logstash.beatsPort }}
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 9600        # Logstash monitoring API
+            initialDelaySeconds: 60
+            periodSeconds: 15
+            failureThreshold: 12
+          resources:
+            {{- toYaml .Values.logstash.resources | nindent 12 }}
+          volumeMounts:
+            - name: config
+              mountPath: /usr/share/logstash/config/logstash.yml
+              subPath: logstash.yml
+            - name: config
+              mountPath: /usr/share/logstash/pipeline/logstash.conf
+              subPath: logstash.conf
+      volumes:
+        - name: config
+          configMap:
+            name: {{ $name }}
+{{- end }}

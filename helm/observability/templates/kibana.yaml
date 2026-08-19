@@ -1,0 +1,69 @@
+{{- if .Values.kibana.enabled }}
+{{- $name := printf "%s-kibana" (include "obs.fullname" .) }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ $name }}
+  labels:
+    {{- include "obs.labels" . | nindent 4 }}
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: {{ $name }}
+  ports:
+    - name: http
+      port: 5601
+      targetPort: 5601
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ $name }}
+  labels:
+    {{- include "obs.labels" . | nindent 4 }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: {{ $name }}
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: {{ $name }}
+        {{- include "obs.labels" . | nindent 8 }}
+    spec:
+      containers:
+        - name: kibana
+          image: {{ include "obs.image" (dict "ctx" $ "image" .Values.kibana.image) }}
+          env:
+            # Same Elasticsearch the Gravitee reporter writes to, so the gravitee-*
+            # analytics indices are queryable here. Read-only consumer — no ingest load.
+            - name: ELASTICSEARCH_HOSTS
+              value: {{ .Values.targets.elasticsearch.url | quote }}
+            # REWRITEBASEPATH=true tells Kibana the proxy does NOT strip the prefix, so
+            # it must handle /kibana itself. With BASEPATH set and REWRITE false, Kibana
+            # expects a stripped path and every asset 404s.
+            - name: SERVER_BASEPATH
+              value: {{ .Values.kibana.path | quote }}
+            - name: SERVER_REWRITEBASEPATH
+              value: "true"
+            - name: SERVER_HOST
+              value: "0.0.0.0"
+            - name: SERVER_PUBLICBASEURL
+              value: "{{ if .Values.ingress.enabled }}{{ if .Values.ingress.tls.enabled }}https{{ else }}http{{ end }}://{{ .Values.ingress.host }}{{ .Values.kibana.path }}{{ else }}http://localhost:5601{{ end }}"
+          ports:
+            - name: http
+              containerPort: 5601
+          readinessProbe:
+            httpGet:
+              path: "{{ .Values.kibana.path }}/api/status"
+              port: http
+            # Kibana's first boot migrates its .kibana index; it is slow.
+            initialDelaySeconds: 60
+            periodSeconds: 15
+            failureThreshold: 20
+          resources:
+            {{- toYaml .Values.kibana.resources | nindent 12 }}
+---
+{{ include "obs.ingress" (dict "ctx" . "name" "kibana" "path" .Values.kibana.path "svc" $name "port" 5601) }}
+{{- end }}

@@ -41,7 +41,21 @@ mongodb:
     size: 1Gi
   resources:
     requests: { cpu: 50m, memory: 256Mi }
-    limits:   { cpu: 500m, memory: 512Mi }
+    limits:   { cpu: 1, memory: 512Mi }
+  # Both probes shell out to `mongosh`, whose JS-engine startup alone costs ~6s on a
+  # throttled kind node — over the chart's 5s readiness / 10s liveness timeouts. The pod
+  # serves queries fine, but kubelet reports it Unhealthy and liveness marches toward its
+  # failureThreshold, restarting a perfectly healthy mongo. Raising the cpu limit above
+  # (500m -> 1) is half the fix; these timeouts are the other half. Widen, don't disable —
+  # a genuinely wedged mongo still gets caught, just later.
+  livenessProbe:
+    timeoutSeconds: 30
+    periodSeconds: 30
+    failureThreshold: 10
+  readinessProbe:
+    timeoutSeconds: 30
+    periodSeconds: 30
+    failureThreshold: 10
 
 # ── Elasticsearch (bundled Bitnami subchart) ─────────────────────────────────
 # Single node that carries ALL roles (masterOnly=false); other roles disabled.

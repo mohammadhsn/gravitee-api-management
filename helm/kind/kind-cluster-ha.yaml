@@ -1,49 +1,80 @@
-# Multi-node kind cluster for rehearsing the PROD data-layer topology locally.
-# Single source of truth for the HA drill (mirror of kind-cluster.yaml, but 4 nodes).
+# Multi-node kind cluster that MIRRORS the prod kubeadm topology as closely as kind can.
 #
-# Purpose: exercise what the single-node cluster CAN'T — a 3-member Mongo replica set
-# and a 3-node Elasticsearch cluster with hard pod anti-affinity (one member per node),
-# shard replicas, and node-down behavior.
+# This is the "HA" / prod-rehearsal mode. Unlike kind-cluster.yaml (single node +
+# extraPortMappings shortcut), it uses the REAL prod traffic path:
 #
-# Full workflow (NOTE the 3rd -f and the cluster name):
-#   kind delete cluster --name gravitee-apim          # free the ~5.8GB the single-node holds
+#   MetalLB LoadBalancer VIP -> ingress-nginx (TLS termination) -> Ingress -> ClusterIP -> pod
+#
+# There are deliberately NO extraPortMappings — the entrypoint is the MetalLB VIP, exactly
+# like prod. 4 nodes (1 control-plane + 3 workers) ≈ prod's 3-4 node cluster.
+#
+# The data layer is SINGLE-NODE by design (1 all-role ES, 1-member Mongo replica set),
+# inherited from helm/prod/values-prod.yaml — see that file's rationale (durability comes
+# from backups, not replication). The 3 workers exist to exercise real cross-node
+# scheduling and pod networking, not to grow the data layer.
+#
+# ⚠️ The MetalLB + ingress-nginx steps below are KIND-ONLY. On the real prod cluster both
+# are already installed and owned by the platform team — the prod runbook only DISCOVERS
+# their settings (DEPLOY-BAREMETAL.md §2) and never installs or patches them. Here we build
+# that edge from scratch so the Gravitee-side layering (Ingress class, host, TLS secret,
+# gateway annotations) is exercised against the same traffic shape prod uses.
+#
+# Full workflow:
+#   kind delete cluster --name gravitee-apim          # free what the single-node holds
 #   kind create cluster --config helm/kind/kind-cluster-ha.yaml
-#   helm/kind/load-images.sh gravitee-apim-ha         # load images into THIS cluster
+#   helm/kind/load-images.sh gravitee-apim-ha
+#
+#   # ── MetalLB (native manifest + our L2 pool) ──
 #   kubectl --context kind-gravitee-apim-ha apply -f \
-#     https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.11.3/deploy/static/provider/kind/deploy.yaml
+#     https://raw.githubusercontent.com/metallb/metallb/v0.14.8/config/manifests/metallb-native.yaml
+#   kubectl --context kind-gravitee-apim-ha -n metallb-system \
+#     rollout status deploy/controller --timeout=300s        # wait for the webhook
+#   kubectl --context kind-gravitee-apim-ha apply -f helm/kind/metallb-pool.yaml
+#
+#   # ── ingress-nginx, BAREMETAL flavour (no hostPort), Service -> LoadBalancer ──
+#   # NOTE the digest strip: the upstream manifest pins images by digest, which never
+#   # matches a `kind load`ed image, so kubelet falls back to a registry pull and 403s.
+#   curl -sSL -o /tmp/ingress-nginx.yaml \
+#     https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.11.3/deploy/static/provider/baremetal/deploy.yaml
+#   sed -i '' -E 's|(image: registry\.k8s\.io/[^@]*)@sha256:[0-9a-f]{64}|\1|' /tmp/ingress-nginx.yaml
+#   kubectl --context kind-gravitee-apim-ha apply -f /tmp/ingress-nginx.yaml
+#   kubectl --context kind-gravitee-apim-ha -n ingress-nginx patch svc ingress-nginx-controller \
+#     -p '{"spec":{"type":"LoadBalancer","externalTrafficPolicy":"Local"}}'
+#   kubectl --context kind-gravitee-apim-ha -n ingress-nginx get svc ingress-nginx-controller  # note the EXTERNAL-IP
+#
+#   # ── TLS secret for apim.example.com (self-signed locally; cert-manager in prod) ──
+#   openssl req -x509 -newkey rsa:2048 -nodes -keyout /tmp/tls.key -out /tmp/tls.crt \
+#     -days 365 -subj "/CN=apim.example.com" -addext "subjectAltName=DNS:apim.example.com"
+#   kubectl --context kind-gravitee-apim-ha create namespace gravitee
+#   kubectl --context kind-gravitee-apim-ha -n gravitee create secret tls apim-tls \
+#     --cert=/tmp/tls.crt --key=/tmp/tls.key
+#
 #   helm dependency build helm/
 #   helm install apim helm/ -n gravitee --create-namespace \
 #     -f helm/deploy/values-common.yaml \
-#     -f helm/kind/values-kind.yaml \
+#     -f helm/prod/values-prod.yaml \
 #     -f helm/kind/values-kind-ha.yaml \
 #     --kube-context kind-gravitee-apim-ha
-#   # Console still at http://localhost:8081/console/
+#
 #   kind delete cluster --name gravitee-apim-ha
 #
-# ⚠️ Needs more RAM than the single-node setup: 3 workers each carry 1 ES + 1 Mongo +
-# a Gravitee pod. Raise Docker Desktop memory to ~10-12GB (host has 16GB) or pods evict.
+# ⚠️ REACHING IT ON macOS: the MetalLB VIP lives on the kind docker network
+# (172.18.0.0/16), which is NOT routable from the Mac host. Verify the full prod path
+# from INSIDE the network:
+#   docker exec gravitee-apim-ha-control-plane \
+#     curl -sk --resolve apim.example.com:443:<VIP> https://apim.example.com/console/
+# For a browser, port-forward the controller and add a hosts entry:
+#   kubectl -n ingress-nginx port-forward svc/ingress-nginx-controller 8443:443
+#   # /etc/hosts:  127.0.0.1  apim.example.com   ->  https://apim.example.com:8443/console/
+# On real prod the VIP is LAN-routable and DNS is real, so neither shim is needed.
 #
-# 3 WORKERS = 3 schedulable nodes for the 3-member data layer (the control-plane keeps
-# its NoSchedule taint, so DB pods land on workers; ingress-nginx tolerates the taint
-# and pins to the ingress-ready control-plane, which owns the 8081/8444 host ports).
+# ⚠️ RAM: 4 node containers each run their own kubelet/containerd on top of the
+# workload. Give Docker Desktop ~10-12GB.
 kind: Cluster
 apiVersion: kind.x-k8s.io/v1alpha4
 name: gravitee-apim-ha
 nodes:
   - role: control-plane
-    kubeadmConfigPatches:
-      - |
-        kind: InitConfiguration
-        nodeRegistration:
-          kubeletExtraArgs:
-            node-labels: "ingress-ready=true"
-    extraPortMappings:
-      - containerPort: 80
-        hostPort: 8081
-        protocol: TCP
-      - containerPort: 443
-        hostPort: 8444
-        protocol: TCP
   - role: worker
   - role: worker
   - role: worker

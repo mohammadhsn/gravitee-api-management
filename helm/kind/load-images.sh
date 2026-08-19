@@ -5,8 +5,8 @@
 # cluster config, so this is the recorded "load step" — run it after creating the
 # cluster and before `helm install`.
 #
-#   helm/kind/load-images.sh                 # cluster: gravitee-apim
-#   helm/kind/load-images.sh my-cluster
+#   helm/kind/load-images.sh                    # cluster: gravitee-apim (single-node)
+#   helm/kind/load-images.sh gravitee-apim-ha   # cluster: gravitee-apim-ha (prod mirror)
 #
 # ⚠️ Docker Desktop's "Use containerd for pulling and storing images" MUST be OFF.
 # With the containerd image store ON, `kind load docker-image` fails with
@@ -38,35 +38,59 @@ BITNAMI_IMAGES=(
 
 # ingress-nginx images (registry.k8s.io). NOT pulled here — registry.k8s.io may be
 # blocked in some networks; pull them yourself first, this only loads what's present.
+#
+# ⚠️ Loading these is NOT enough on its own: the upstream ingress-nginx deploy.yaml pins
+# both images by DIGEST (`:v1.11.3@sha256:...`). `kind load docker-image` imports them
+# under the TAG with a locally-computed digest, so the pinned digest never resolves and
+# kubelet falls back to a registry pull -> 403 ImagePullBackOff on the certgen jobs.
+# Strip the digests before applying (all three containers already use IfNotPresent).
+# Pick the flavour that matches the cluster:
+#   .../provider/kind/deploy.yaml       -> single-node (hostPort, localhost:8081)
+#   .../provider/baremetal/deploy.yaml  -> prod mirror (Service patched to LoadBalancer)
+#   curl -sSL -o ingress-nginx.yaml \
+#     https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.11.3/deploy/static/provider/<flavour>/deploy.yaml
+#   sed -i '' -E 's|(image: registry\.k8s\.io/[^@]*)@sha256:[0-9a-f]{64}|\1|' ingress-nginx.yaml
+#   kubectl apply -f ingress-nginx.yaml
 INGRESS_IMAGES=(
     registry.k8s.io/ingress-nginx/controller:v1.11.3
     registry.k8s.io/ingress-nginx/kube-webhook-certgen:v1.4.4
 )
 
-# MetalLB images (quay.io) — needed only by the prod-mirror cluster (kind-cluster-prod.yaml),
-# which uses a real LoadBalancer VIP instead of extraPortMappings. quay.io is usually
-# reachable; pulled here like the Bitnami set, then loaded. Harmless for the other clusters.
+# MetalLB images (quay.io) — needed by the prod-mirror cluster (kind-cluster-ha.yaml),
+# which uses a real LoadBalancer VIP instead of extraPortMappings. Harmless for the
+# single-node cluster, which never installs MetalLB.
 METALLB_IMAGES=(
     quay.io/metallb/controller:v0.14.8
     quay.io/metallb/speaker:v0.14.8
 )
 
-echo ">> Pulling Bitnami + MetalLB images on the host (avoids the throttled in-cluster pulls)..."
-for img in "${BITNAMI_IMAGES[@]}" "${METALLB_IMAGES[@]}"; do
-    echo "   docker pull $img"
-    docker pull "$img" >/dev/null
-done
-
-echo ">> Loading Gravitee + Bitnami + MetalLB images into kind cluster '$CLUSTER'..."
-kind load docker-image "${GRAVITEE_IMAGES[@]}" "${BITNAMI_IMAGES[@]}" "${METALLB_IMAGES[@]}" --name "$CLUSTER"
-
-echo ">> Loading ingress-nginx images (only those already pulled locally)..."
-for img in "${INGRESS_IMAGES[@]}"; do
+# Pull only what's MISSING, and never abort the run on a pull failure: quay.io and
+# registry.k8s.io are 403-blocked on some networks, and an already-loaded local copy is
+# just as good. Anything still absent afterwards is reported and skipped at load time,
+# so you can pull it yourself and re-run.
+ensure_local() {
+    local img="$1"
     if docker image inspect "$img" >/dev/null 2>&1; then
-        kind load docker-image "$img" --name "$CLUSTER"
-    else
-        echo "   NOT on host (pull it yourself if registry.k8s.io is blocked): $img"
+        echo "   already local: $img"
+        return 0
+    fi
+    echo "   docker pull $img"
+    if docker pull "$img" >/dev/null 2>&1; then
+        return 0
+    fi
+    echo "   ⚠️  PULL FAILED (registry blocked?) — pull it yourself, then re-run: $img"
+    return 1
+}
+
+echo ">> Ensuring images are on the host (avoids the throttled in-cluster pulls)..."
+PRESENT=()
+for img in "${GRAVITEE_IMAGES[@]}" "${BITNAMI_IMAGES[@]}" "${INGRESS_IMAGES[@]}" "${METALLB_IMAGES[@]}"; do
+    if ensure_local "$img"; then
+        PRESENT+=("$img")
     fi
 done
 
-echo ">> Done. Images available on the kind node."
+echo ">> Loading ${#PRESENT[@]} image(s) into kind cluster '$CLUSTER'..."
+kind load docker-image "${PRESENT[@]}" --name "$CLUSTER"
+
+echo ">> Done. Images available on the kind node(s)."

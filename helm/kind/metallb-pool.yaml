@@ -1,4 +1,4 @@
-# MetalLB L2 address pool for the kind prod-mirror.
+# MetalLB L2 address pool for the kind prod-mirror (kind-cluster-ha.yaml).
 #
 # Uses the TOP of kind's docker network /16 (default 172.18.0.0/16 — node IPs start low,
 # so .255.200-.255.250 won't collide). VERIFY the subnet before applying:

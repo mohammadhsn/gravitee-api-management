@@ -1,35 +1,67 @@
-# HA data-layer delta — the ONLY difference between single-node kind and the
-# prod-shaped topology. Layer it LAST, on top of the validated files:
+# PROD REHEARSAL on kind — the smallest possible delta from the real prod overlay.
+# Layer it LAST, on top of common + prod:
 #
 #   -f helm/deploy/values-common.yaml \
-#   -f helm/kind/values-kind.yaml \
+#   -f helm/prod/values-prod.yaml \
 #   -f helm/kind/values-kind-ha.yaml
 #
-# values-kind.yaml already carries localhost URLs, ingress, image tags/IfNotPresent
-# and 1-replica Gravitee components — all inherited unchanged. This file ONLY bumps
-# the data layer to the HA shape, so the two overlays never drift.
+# Everything that DEFINES prod behavior is inherited from values-prod.yaml unchanged:
+#   - single-node data layer (1 ES all-role, 1-member Mongo RS)
+#   - TLS terminated at ingress-nginx (secret apim-tls), https edge URLs
+#   - host apim.example.com, ingressClassName nginx, gateway body-size/timeout annotations
+#   - image tags + pullPolicy IfNotPresent (so kind reuses `kind load`ed images)
 #
-# Requires the multi-node cluster (helm/kind/kind-cluster-ha.yaml: 3 workers).
-# Scope: HA is applied to the DATA LAYER (ES + Mongo) — the thing we're de-risking.
-# The stateless Gravitee pods stay at 1 replica (their HA is trivial, and RAM is tight).
+# This file ONLY shrinks heap/disk/cpu so the stack fits a laptop, plus one probe-timeout
+# fix that is a kind artifact (below). The TRAFFIC PATH is identical to prod:
+# MetalLB LoadBalancer IP -> ingress-nginx -> Ingress -> ClusterIP svc.
+# Requires: multi-node kind (kind-cluster-ha.yaml) + MetalLB + ingress-nginx(LoadBalancer).
 
-# ── MongoDB: 1-member replica set -> 3-member replica set ─────────────────────
-# Parent chart already runs mongo as a replica set; just grow it to 3 voting members
-# (quorum survives losing 1) and force one-per-node so a node loss drops exactly one.
-mongodb:
-  replicaCount: 3
-  podAntiAffinityPreset: hard
-
-# ── Elasticsearch: 1 all-role node -> 3 all-role nodes ───────────────────────
-# masterOnly:false is inherited from values-kind.yaml, so all 3 carry data too.
-# Hard anti-affinity spreads them one-per-node; data/coordinating/ingest stay 0.
 elasticsearch:
   master:
-    replicaCount: 3
-    podAntiAffinityPreset: hard
+    heapSize: 512m
+    persistence:
+      size: 4Gi
+    resources:
+      requests: { cpu: 100m, memory: 700Mi }
+      limits:   { cpu: 1,    memory: 1300Mi }
 
-# Now that there is more than one node, give every shard a replica so a node loss
-# never loses data and the cluster stays green (overrides the single-node 0).
-es:
-  settings:
-    number_of_replicas: 1
+mongodb:
+  persistence:
+    size: 1Gi
+  resources:
+    requests: { cpu: 50m, memory: 256Mi }
+    limits:   { cpu: 1,   memory: 512Mi }
+  # KIND-ONLY FIX (do not port to prod): both probes shell out to `mongosh`, whose
+  # JS-engine startup alone costs ~6s on a throttled kind node — over the chart's 5s
+  # readiness / 10s liveness timeouts. Mongo serves queries fine, but kubelet reports it
+  # Unhealthy and liveness marches toward failureThreshold, restarting a healthy DB.
+  # Widen, don't disable — a genuinely wedged mongo is still caught, just later.
+  # Prod nodes are not CPU-starved this way, so values-prod.yaml keeps chart defaults.
+  livenessProbe:
+    timeoutSeconds: 30
+    periodSeconds: 30
+    failureThreshold: 10
+  readinessProbe:
+    timeoutSeconds: 30
+    periodSeconds: 30
+    failureThreshold: 10
+
+api:
+  resources:
+    requests: { cpu: 100m, memory: 512Mi }
+    limits:   { cpu: 1,    memory: 1024Mi }
+
+gateway:
+  resources:
+    requests: { cpu: 100m, memory: 384Mi }
+    limits:   { cpu: 1,    memory: 768Mi }
+
+ui:
+  resources:
+    requests: { cpu: 25m,  memory: 64Mi }
+    limits:   { cpu: 250m, memory: 128Mi }
+
+portal:
+  resources:
+    requests: { cpu: 25m,  memory: 64Mi }
+    limits:   { cpu: 250m, memory: 128Mi }

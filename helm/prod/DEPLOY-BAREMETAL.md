@@ -44,7 +44,10 @@ machine running `helm`. #2 is the one that genuinely requires the air-gap fix.
 # On a CONNECTED host, from the repo root:
 helm dependency build helm/          # fetches the 2 subcharts into helm/charts/
 helm package helm/ -d ./dist         # -> ./dist/apim-4.11.0.tgz  (~363 KB, subcharts embedded)
+helm package helm/observability/ -d ./dist   # -> ./dist/gravitee-observability-0.1.0.tgz
 ```
+The observability chart has no dependencies of its own, so packaging it is just for symmetry:
+both releases then install from a `.tgz` rather than one from a tgz and one from a source dir.
 Verify it is genuinely self-contained before carrying it in — render it with the repo config and
 cache pointed at empty dirs, so Helm *cannot* consult any repository:
 ```bash
@@ -54,7 +57,8 @@ HELM_REPOSITORY_CONFIG=/tmp/norepo/none.yaml HELM_REPOSITORY_CACHE=/tmp/norepo \
     -f helm/deploy/values-common.yaml -f helm/prod/values-prod.yaml -f helm/prod/values-airgap.yaml \
   | grep -c 'kind: StatefulSet'      # expect 2 (ES + Mongo) -> subcharts resolved locally
 ```
-Carry `dist/apim-4.11.0.tgz` + the three values files inside. **Do not run `helm dependency build`
+Carry the whole `dist/` + `helm/` pair inside (see A.3) -- that is both chart
+packages plus all four values files. **Do not run `helm dependency build`
 on the inside** — it would try to reach the repo. Install from the `.tgz`, not from `helm/`.
 
 > Why not commit `helm/charts/*.tgz` instead? The repo's root `.gitignore` has `helm/**/*.tgz`, so
@@ -98,6 +102,30 @@ helm template apim ./dist/apim-4.11.0.tgz \
 ```
 If the registry needs auth, create `regcred` in the `gravitee` namespace and uncomment
 `global.imagePullSecrets` + the per-component `pullSecrets` lines in `values-airgap.yaml`.
+
+### A.3 — Pack it for transfer
+
+One archive carries everything the Helm side needs. `dist/` holds both chart packages; `helm/`
+holds the values files, this runbook, and `mirror-images.sh`:
+```bash
+tar czf gravitee-baremetal-$(date +%Y%m%d).tar.gz --exclude='.DS_Store' dist helm
+```
+On the far side it extracts to exactly `dist/` + `helm/`, which is what every command below
+assumes as the working directory:
+```bash
+tar xzf gravitee-baremetal-<date>.tar.gz
+```
+Sanity-check the extracted copy renders with NO repository access before you rely on it:
+```bash
+mkdir -p /tmp/norepo
+HELM_REPOSITORY_CONFIG=/tmp/norepo/none.yaml HELM_REPOSITORY_CACHE=/tmp/norepo \
+  helm template apim ./dist/apim-4.11.0.tgz \
+    -f helm/deploy/values-common.yaml -f helm/prod/values-prod.yaml \
+    -f helm/prod/values-airgap.yaml -f helm/prod/values-observability.yaml \
+  | grep -c '^kind: '                # expect 37
+```
+⚠️ This archive is ~800 KB and contains **no container images**. Those travel separately via
+`mirror-images.sh bundle` (§A.2) and are ~3-4 GB. Both halves must arrive.
 
 ---
 
@@ -331,17 +359,17 @@ helm install apim helm/ -n $NS --create-namespace $KUBE \
 ```
 
 **Air-gapped cluster** — install from the packaged artifact built in §A.1 and add the airgap
-overlay. Note it is `./apim-4.11.0.tgz`, **not** `helm/`: pointing at the source dir would make
+overlay. Note it is `./dist/apim-4.11.0.tgz`, **not** `helm/`: pointing at the source dir would make
 Helm try to resolve the subcharts from the network again.
 ```bash
-helm install apim ./apim-4.11.0.tgz -n $NS --create-namespace $KUBE \
+helm install apim ./dist/apim-4.11.0.tgz -n $NS --create-namespace $KUBE \
   -f helm/deploy/values-common.yaml \
   -f helm/prod/values-prod.yaml \
   -f helm/prod/values-airgap.yaml
 ```
 Upgrade later with the same chart reference and `-f` set:
 ```bash
-helm upgrade apim ./apim-4.11.0.tgz -n $NS $KUBE -f ... -f ...
+helm upgrade apim ./dist/apim-4.11.0.tgz -n $NS $KUBE -f ... -f ...
 ```
 ⚠️ Keep the `-f` list identical on every upgrade. Helm values are **replaced, not merged**, across
 invocations: dropping `values-airgap.yaml` silently reverts every image to `docker.io` and the next
@@ -352,7 +380,7 @@ shell variable or a small wrapper script so it cannot be forgotten:
 FILES="-f helm/deploy/values-common.yaml -f helm/prod/values-prod.yaml"
 FILES="$FILES -f helm/prod/values-airgap.yaml"          # air-gapped only
 FILES="$FILES -f helm/prod/values-observability.yaml"   # if you deploy §5b
-helm upgrade apim ./apim-4.11.0.tgz -n $NS $KUBE $FILES
+helm upgrade apim ./dist/apim-4.11.0.tgz -n $NS $KUBE $FILES
 ```
 
 ---
@@ -365,7 +393,7 @@ enabled in step 1 below. Full detail in `helm/observability/README.md`.
 
 **Step 1 — expose the Gravitee metrics endpoints** (changes the APIM release):
 ```bash
-helm upgrade apim ./apim-4.11.0.tgz -n $NS $KUBE \
+helm upgrade apim ./dist/apim-4.11.0.tgz -n $NS $KUBE \
   -f helm/deploy/values-common.yaml \
   -f helm/prod/values-prod.yaml \
   -f helm/prod/values-observability.yaml       # ← added
@@ -387,7 +415,7 @@ kubectl $KUBE -n $NS get svc apim-api apim-gateway \
 
 **Step 2 — deploy the companion release** into the same namespace:
 ```bash
-helm install obs helm/observability/ -n $NS $KUBE \
+helm install obs ./dist/gravitee-observability-0.1.0.tgz -n $NS $KUBE \
   --set ingress.host=$HOST \
   --set ingress.ingressClassName=$INGRESS_CLASS \
   --set ingress.tls.secretName=$TLS_SECRET \
@@ -410,7 +438,7 @@ kubectl $KUBE -n $NS port-forward svc/obs-observability-prometheus 9090:9090
 
 ⚠️ **Logstash defaults to OFF and should stay off unless you have a log shipper.** Its only input
 is `beats` on 5044 and there is deliberately no Filebeat here — container stdout is already
-collected by the platform's node agent. Nothing is lost: Gravitee's analytics never travelled
+collected by a platform agent IF your cluster runs one -- verify, do not assume. Gravitee's analytics never travelled
 through Logstash; the gateway's Elasticsearch reporter writes straight to the `gravitee-*` indices.
 
 ⚠️ **Two default credentials** — the node API (`admin`/`adminadmin`) and Grafana (`admin`/`admin`).
@@ -515,7 +543,7 @@ kubectl $KUBE -n $NS get events --sort-by=.lastTimestamp | tail -20
 ## 9. Upgrade / rollback / uninstall
 
 ```bash
-helm upgrade  apim ./apim-4.11.0.tgz -n $NS $KUBE -f helm/deploy/values-common.yaml -f helm/prod/values-prod.yaml [-f helm/prod/values-airgap.yaml]
+helm upgrade  apim ./dist/apim-4.11.0.tgz -n $NS $KUBE -f helm/deploy/values-common.yaml -f helm/prod/values-prod.yaml [-f helm/prod/values-airgap.yaml]
 helm history  apim -n $NS $KUBE
 helm rollback apim <REVISION> -n $NS $KUBE
 helm uninstall apim -n $NS $KUBE            # NOTE: PVCs are retained; delete explicitly if intended:

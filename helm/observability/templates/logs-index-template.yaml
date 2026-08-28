@@ -1,0 +1,76 @@
+{{- if and .Values.logstash.enabled .Values.logstash.zeroReplicas }}
+{{- $name := printf "%s-logs-template" (include "obs.fullname" .) }}
+# Force number_of_replicas=0 on the logs-* indices Logstash creates.
+#
+# WHY THIS EXISTS: Logstash's elasticsearch output creates indices with ES defaults,
+# i.e. 1 replica. On the single-node Elasticsearch this stack runs (a deliberate choice --
+# see helm/prod/values-prod.yaml), that replica can never be allocated, so every logs-*
+# index sits with an unassigned shard and the CLUSTER goes yellow forever. The chart
+# already sets number_of_replicas=0 for the gravitee-* analytics indices via es.settings,
+# but Logstash bypasses that entirely.
+#
+# A composable index template (_index_template) takes precedence over the legacy
+# `ecs-logstash` template Logstash installs, so this wins without fighting it. The job
+# also patches indices that already exist, since a template only affects new ones.
+#
+# Set logstash.zeroReplicas=false if you ever run a multi-node Elasticsearch and want
+# real replicas for the log data.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ $name }}
+  labels:
+    {{- include "obs.labels" . | nindent 4 }}
+  annotations:
+    "helm.sh/hook": post-install,post-upgrade
+    "helm.sh/hook-weight": "5"
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+spec:
+  backoffLimit: 6
+  ttlSecondsAfterFinished: 300
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: {{ $name }}
+        {{- include "obs.labels" . | nindent 8 }}
+    spec:
+      restartPolicy: OnFailure
+      containers:
+        # Reuse the logstash image purely because it ships curl and is already present
+        # wherever logstash runs -- avoids adding a 14th image to mirror for air-gap.
+        - name: apply
+          image: {{ include "obs.image" (dict "ctx" $ "image" .Values.logstash.image) }}
+          command:
+            - /bin/sh
+            - -c
+            - |
+              set -e
+              ES="{{ .Values.targets.elasticsearch.url }}"
+              echo ">> waiting for elasticsearch..."
+              until curl -sf "$ES/_cluster/health" >/dev/null 2>&1; do sleep 5; done
+
+              echo ">> installing composable index template logs-gravitee"
+              curl -sf -X PUT "$ES/_index_template/logs-gravitee" \
+                -H 'Content-Type: application/json' -d '{
+                  "index_patterns": ["logs-*"],
+                  "priority": 200,
+                  "template": {
+                    "settings": {
+                      "number_of_shards": 1,
+                      "number_of_replicas": 0
+                    }
+                  }
+                }'
+              echo
+
+              echo ">> patching any logs-* indices that already exist"
+              # 404 is fine: it just means nothing has been shipped yet.
+              curl -s -X PUT "$ES/logs-*/_settings" \
+                -H 'Content-Type: application/json' \
+                -d '{"index":{"number_of_replicas":0}}' || true
+              echo
+              echo ">> done"
+          resources:
+            requests: { cpu: 50m, memory: 128Mi }
+            limits:   { cpu: 500m, memory: 512Mi }
+{{- end }}

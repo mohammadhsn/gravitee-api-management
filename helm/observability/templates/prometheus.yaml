@@ -93,7 +93,11 @@ spec:
         app.kubernetes.io/name: {{ $name }}
         {{- include "obs.labels" . | nindent 8 }}
       annotations:
-        checksum/config: {{ .Values.prometheus.scrapeInterval | toString | sha256sum }}
+        # Cover the scrape TARGETS too, not just scrapeInterval -- otherwise changing a
+        # target or the auth credentials leaves prometheus on the old config (the same
+        # class of bug the filebeat DaemonSet had). Hashing this template itself would
+        # recurse infinitely, so hash the values the config is built from.
+        checksum/config: {{ dict "p" .Values.prometheus "t" .Values.targets | toYaml | sha256sum }}
     spec:
       securityContext:
         # Official image runs as nobody(65534); the PV must be writable by it.

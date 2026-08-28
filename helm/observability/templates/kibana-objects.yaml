@@ -1,0 +1,102 @@
+{{- if and .Values.kibana.enabled .Values.kibana.provisionSavedObjects }}
+{{- $name := printf "%s-kibana-objects" (include "obs.fullname" .) }}
+{{- $kb   := printf "%s-kibana" (include "obs.fullname" .) }}
+# Provision Kibana data views + the container-logs dashboard.
+#
+# The Grafana equivalent is a file-provisioning directory the app reads at boot. Kibana has
+# no such mechanism -- saved objects are only created through its API. So this is a
+# post-install/post-upgrade hook that imports an NDJSON bundle, which keeps the dashboards
+# declarative and versioned with the chart instead of hand-built in the UI.
+#
+# NOTE: the objects are stored by Kibana in ELASTICSEARCH (.kibana_analytics_* indices),
+# not on the Kibana pod, so they already survive pod replacement. What this buys is
+# reproducibility -- a fresh cluster, or an Elasticsearch restored from backup without
+# the .kibana indices, comes up with the dashboards already there.
+#
+# The NDJSON was EXPORTED from a running Kibana via /api/saved_objects/_export rather than
+# hand-written, so it is exactly what Kibana itself produces and accepts. Regenerate it the
+# same way after editing dashboards in the UI:
+#   curl -s -X POST "$KB/api/saved_objects/_export" -H 'kbn-xsrf: true' \
+#     -H 'Content-Type: application/json' \
+#     -d '{"objects":[{"type":"dashboard","id":"gravitee-container-logs"}],
+#          "includeReferencesDeep":true,"excludeExportDetails":true}' \
+#     > helm/observability/kibana/gravitee-logs.ndjson
+#
+# ⚠️ Field naming: every string field in logs-* is mapped `text` and is NOT aggregatable.
+# The visualizations therefore reference the `.keyword` twins
+# (kubernetes.container.name.keyword, ...). Using the bare field silently yields an empty
+# panel, so keep the suffix when editing.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ $name }}
+  labels:
+    {{- include "obs.labels" . | nindent 4 }}
+data:
+  {{- (.Files.Glob "kibana/*.ndjson").AsConfig | nindent 2 }}
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ $name }}
+  labels:
+    {{- include "obs.labels" . | nindent 4 }}
+  annotations:
+    "helm.sh/hook": post-install,post-upgrade
+    "helm.sh/hook-weight": "10"
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+spec:
+  backoffLimit: 10
+  ttlSecondsAfterFinished: 300
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: {{ $name }}
+        {{- include "obs.labels" . | nindent 8 }}
+    spec:
+      restartPolicy: OnFailure
+      containers:
+        # Reuses the kibana image: it ships curl and is already mirrored, so this adds
+        # nothing to the air-gap image list.
+        - name: import
+          image: {{ include "obs.image" (dict "ctx" $ "image" .Values.kibana.image) }}
+          command:
+            - /bin/sh
+            - -c
+            - |
+              set -e
+              KB="http://{{ $kb }}:5601{{ .Values.kibana.path }}"
+
+              # Kibana's first boot migrates its .kibana index and is slow; the import API
+              # 503s until status is green, so wait on status rather than a fixed sleep.
+              echo ">> waiting for kibana to report available..."
+              until curl -sf "$KB/api/status" 2>/dev/null | grep -q '"level":"available"'; do sleep 10; done
+
+              for f in /objects/*.ndjson; do
+                echo ">> importing $(basename "$f")"
+                # overwrite=true makes this idempotent across upgrades. Without it a
+                # re-run fails on every existing object.
+                #
+                # NOT piped into sed on purpose. /bin/sh in this image is dash, which has
+                # no `pipefail`, so a pipeline takes sed's exit status and `set -e` would
+                # never see a failed curl -- an import that created nothing would report
+                # success. (And `set -o pipefail` is itself fatal here: dash rejects it,
+                # which crashloops the hook and makes helm hang until it times out.)
+                curl -sf -X POST "$KB/api/saved_objects/_import?overwrite=true" \
+                  -H 'kbn-xsrf: true' \
+                  -F "file=@$f"
+                echo
+              done
+              echo ">> done"
+          volumeMounts:
+            - name: objects
+              mountPath: /objects
+              readOnly: true
+          resources:
+            requests: { cpu: 50m, memory: 128Mi }
+            limits:   { cpu: 500m, memory: 512Mi }
+      volumes:
+        - name: objects
+          configMap:
+            name: {{ $name }}
+{{- end }}

@@ -42,6 +42,7 @@ IMAGES=(
     "grafana/grafana:11.3.1=grafana/grafana:11.3.1"
     "docker.elastic.co/kibana/kibana:8.17.2=docker.elastic.co/kibana/kibana:8.17.2"
     "docker.elastic.co/logstash/logstash:8.17.2=docker.elastic.co/logstash/logstash:8.17.2"
+    "docker.elastic.co/beats/filebeat:8.17.2=docker.elastic.co/beats/filebeat:8.17.2"
 )
 
 src_of() { echo "${1%%=*}"; }

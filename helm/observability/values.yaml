@@ -13,7 +13,7 @@
 # ── Air-gap: set this once and all four images below are pulled from your registry ──
 # Mirror them with helm/prod/mirror-images.sh (they are in its image list).
 global:
-  imageRegistry: ""          # e.g. registry.internal  -> registry.internal/grafana/grafana:11.3.1
+  imageRegistry: "30.30.30.134:1111"   # -> 30.30.30.134:1111/grafana/grafana:11.3.1
 
 # ── Shared edge settings (same host as APIM; extra paths alongside /console etc.) ──
 ingress:
@@ -85,6 +85,12 @@ kibana:
   enabled: true
   image: docker.elastic.co/kibana/kibana:8.17.2
   path: /kibana
+  # Import the data views + container-logs dashboard from helm/observability/kibana/*.ndjson
+  # via a post-install hook. Kibana has no file-provisioning mechanism like Grafana's, so
+  # saved objects can only be created through its API -- and its .kibana index lives on an
+  # emptyDir here, so without this they would be lost whenever the pod is replaced.
+  # Import is idempotent (overwrite=true), so it is safe on every upgrade.
+  provisionSavedObjects: true
   resources:
     requests: { cpu: 100m, memory: 512Mi }
     limits:   { cpu: 1,    memory: 1536Mi }
@@ -95,19 +101,62 @@ kibana:
 # 5044 and the pipeline does NO parsing — it forwards raw events to
 # elasticsearch:9200 index logs-YYYY.MM.dd (identical to the compose pipeline).
 #
-# In compose, Filebeat fed it. On Kubernetes there is deliberately NO Filebeat in this
-# chart: container stdout is collected by the platform's own node-level agent, and a
-# second DaemonSet mounting the container runtime socket duplicates logs and needs
-# root-on-node. So Logstash starts and sits IDLE until something ships to it.
+# Logstash needs a PRODUCER or it sits idle forever (events_in stays 0 and no logs-*
+# index is ever created). There are two ways to give it one:
+#   a) enable the filebeat DaemonSet below (self-contained; what this chart ships), or
+#   b) point an existing cluster log collector at logstash:5044, IF your platform runs
+#      one. Do not assume it does -- verify with
+#      `kubectl get daemonset -A | grep -iE 'filebeat|fluent|vector|promtail'`.
 #
-# Enable it only if you have a producer: point the platform's collector (or any
-# beats/lumberjack-capable shipper) at logstash:5044. Otherwise leave it off — nothing
-# is lost, because Gravitee's ANALYTICS never flowed through Logstash. They go straight
-# from the gateway's Elasticsearch reporter into the gravitee-* indices.
+# Note Gravitee's ANALYTICS never flow through Logstash -- they go straight from the
+# gateway's Elasticsearch reporter into the gravitee-* indices. Logstash only carries
+# container stdout.
+# ── Filebeat (node-level log shipper) ────────────────────────────────────────
+# The PRODUCER for logstash. Without this (or an equivalent collector already on the
+# cluster) logstash idles at events_in=0 and no logs-* index is ever created.
+#
+# NOT a port of the compose filebeat: that one read Docker's layout and used
+# add_docker_metadata via the docker socket. On kubeadm/containerd this reads
+# /var/log/containers (symlinks into /var/log/pods) and gets pod metadata from the API
+# server, which is why it needs a ServiceAccount + read-only ClusterRole.
+#
+# Cost to be aware of: it is a DaemonSet running as uid 0 (that is what reading
+# root-owned /var/log/pods takes) with read-only host mounts. If that is not acceptable
+# on a shared cluster, disable it and have the platform's collector target
+# logstash:5044 instead.
+filebeat:
+  enabled: false
+  image: docker.elastic.co/beats/filebeat:8.17.2
+  logLevel: info
+  # Namespaces to KEEP. Empty list ([]) collects the whole cluster -- size Elasticsearch
+  # for that first; the ES in this stack is sized for Gravitee analytics alone.
+  namespaces:
+    - gravitee
+  # Containers to KEEP, within those namespaces. Empty list ([]) collects all of them.
+  #
+  # Defaults to the gateway alone: its LIFECYCLE logs (startup, sync, API deploys) are
+  # the ones worth keeping, and everything else (mongodb, elasticsearch, grafana, the
+  # UIs) was pure noise -- mongodb alone accounted for ~40% of the index.
+  #
+  # Per-REQUEST data is NOT here. The gateway writes request analytics (client ip,
+  # destination, status, latency) directly to Elasticsearch as gravitee-v4-metrics-*;
+  # see the "Gravitee - Gateway Requests" dashboard.
+  containers:
+    - apim-gateway
+  resources:
+    requests: { cpu: 50m,  memory: 128Mi }
+    limits:   { cpu: 300m, memory: 300Mi }
+
 logstash:
   enabled: false
   image: docker.elastic.co/logstash/logstash:8.17.2
   beatsPort: 5044
+  # Force number_of_replicas=0 on the logs-* indices via a composable index template.
+  # Logstash otherwise creates them with the ES default of 1 replica, which can NEVER be
+  # allocated on the single-node Elasticsearch this stack runs -- leaving an unassigned
+  # shard per index and the whole cluster permanently YELLOW. Set false only if you move
+  # to a multi-node ES and actually want replicas for log data.
+  zeroReplicas: true
   indexPattern: "logs-%{+YYYY.MM.dd}"
   javaOpts: "-Xms512m -Xmx512m"
   resources:

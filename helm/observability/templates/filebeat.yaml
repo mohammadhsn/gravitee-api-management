@@ -1,0 +1,208 @@
+{{- if .Values.filebeat.enabled }}
+{{- $name := printf "%s-filebeat" (include "obs.fullname" .) }}
+{{- $ls   := printf "%s-logstash" (include "obs.fullname" .) }}
+# Node-level log shipper: container stdout -> logstash:5044 -> ES logs-*.
+#
+# This is NOT a port of the compose Filebeat. That one read Docker's log layout
+# (/var/lib/docker/containers) and used add_docker_metadata via /var/run/docker.sock,
+# neither of which exists on a kubeadm/containerd node. Here we read the kubelet's
+# layout and get pod metadata from the API server instead -- hence the RBAC below.
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ $name }}
+  labels:
+    {{- include "obs.labels" . | nindent 4 }}
+---
+# add_kubernetes_metadata enriches each line with pod/namespace/container by asking the
+# API server. Read-only, and cluster-scoped because a DaemonSet pod may host pods from
+# any namespace even when we only KEEP some of them (the drop happens after enrichment).
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: {{ $name }}
+  labels:
+    {{- include "obs.labels" . | nindent 4 }}
+rules:
+  - apiGroups: [""]
+    resources: ["pods", "namespaces", "nodes"]
+    verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: {{ $name }}
+  labels:
+    {{- include "obs.labels" . | nindent 4 }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: {{ $name }}
+subjects:
+  - kind: ServiceAccount
+    name: {{ $name }}
+    namespace: {{ .Release.Namespace }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ $name }}
+  labels:
+    {{- include "obs.labels" . | nindent 4 }}
+data:
+  filebeat.yml: |
+    filebeat.inputs:
+      - type: filestream
+        id: kubernetes-container-logs
+        # /var/log/containers/*.log are SYMLINKS into /var/log/pods, which is why both
+        # paths are mounted and symlink scanning is on. Pointing at /var/log/pods
+        # directly works too but loses the pod/container naming in the filename that
+        # add_kubernetes_metadata's logs_path matcher relies on.
+        paths:
+          - /var/log/containers/*.log
+        prospector:
+          scanner:
+            symlinks: true
+        parsers:
+          # Parses the CRI log format (containerd) as well as Docker's json-file.
+          - container:
+              stream: all
+              format: auto
+
+    processors:
+      - add_kubernetes_metadata:
+          host: ${NODE_NAME}
+          matchers:
+            - logs_path:
+                logs_path: /var/log/containers/
+      {{- if .Values.filebeat.namespaces }}
+      # Keep only the namespaces we care about. Filtering here (not at the input) is
+      # deliberate: the namespace is only known AFTER add_kubernetes_metadata has run.
+      # Set filebeat.namespaces to [] for cluster-wide collection -- but size
+      # Elasticsearch for it first; the one in this stack is sized for Gravitee
+      # analytics alone.
+      - drop_event:
+          when:
+            not:
+              or:
+              {{- range .Values.filebeat.namespaces }}
+                - equals:
+                    kubernetes.namespace: {{ . | quote }}
+              {{- end }}
+      {{- end }}
+      {{- if .Values.filebeat.containers }}
+      # Keep only these containers. Without it, mongodb/elasticsearch/grafana/portal
+      # stdout dominates the index (mongodb alone was ~40% of documents) and buries the
+      # component you actually want. Set to [] to collect every container in the
+      # namespaces above.
+      #
+      # NOTE this carries the gateway's LIFECYCLE logs only -- startup, sync, API
+      # deploys. The gateway does NOT log per-request lines to stdout; request/response
+      # analytics (client ip, destination, status, latency) are written straight to
+      # Elasticsearch by its reporter, into gravitee-v4-metrics-*. Use the
+      # "Gravitee - Gateway Requests" dashboard for those, not logs-*.
+      - drop_event:
+          when:
+            not:
+              or:
+              {{- range .Values.filebeat.containers }}
+                - equals:
+                    kubernetes.container.name: {{ . | quote }}
+              {{- end }}
+      {{- end }}
+      # Filebeat's own logs would otherwise feed themselves.
+      - drop_event:
+          when:
+            contains:
+              kubernetes.container.name: "filebeat"
+
+    output.logstash:
+      hosts: ["{{ $ls }}:{{ .Values.logstash.beatsPort }}"]
+
+    logging.level: {{ .Values.filebeat.logLevel }}
+---
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: {{ $name }}
+  labels:
+    {{- include "obs.labels" . | nindent 4 }}
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: {{ $name }}
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: {{ $name }}
+        {{- include "obs.labels" . | nindent 8 }}
+      annotations:
+        # Roll the DaemonSet whenever filebeat.yml changes. Without this the ConfigMap
+        # is updated but the pods keep running the OLD config indefinitely -- the
+        # DaemonSet spec is unchanged, so there is nothing to roll and even
+        # `kubectl rollout status` reports success. Worse, the config is mounted with
+        # subPath, which kubelet never refreshes in place. Observed for real: a new
+        # container filter sat in the ConfigMap while 3-day-old pods kept shipping
+        # everything.
+        # Hash the values the config is built from. (Including this template itself
+        # would recurse infinitely -- a template cannot include its own file.)
+        checksum/config: {{ dict "fb" .Values.filebeat "beatsPort" .Values.logstash.beatsPort | toYaml | sha256sum }}
+    spec:
+      serviceAccountName: {{ $name }}
+      # Cover the control-plane too -- it runs the ingress controller, whose logs are
+      # usually the first thing you want when the edge misbehaves.
+      tolerations:
+        - operator: Exists
+      terminationGracePeriodSeconds: 30
+      containers:
+        - name: filebeat
+          image: {{ include "obs.image" (dict "ctx" $ "image" .Values.filebeat.image) }}
+          # --strict.perms=false: filebeat otherwise refuses a bind-mounted config it
+          # considers world-writable, which is exactly how a ConfigMap mount looks.
+          args: ["-e", "--strict.perms=false"]
+          securityContext:
+            # /var/log/pods is root-owned 0750; reading it needs uid 0. This is the
+            # privilege cost of node-level log collection -- narrowed as far as it goes:
+            # no host network/PID, no privileged flag, and every mount below read-only
+            # except the registry dir.
+            runAsUser: 0
+            privileged: false
+            allowPrivilegeEscalation: false
+          env:
+            - name: NODE_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+          resources:
+            {{- toYaml .Values.filebeat.resources | nindent 12 }}
+          volumeMounts:
+            - name: config
+              mountPath: /usr/share/filebeat/filebeat.yml
+              subPath: filebeat.yml
+              readOnly: true
+            - name: varlogcontainers
+              mountPath: /var/log/containers
+              readOnly: true
+            - name: varlogpods
+              mountPath: /var/log/pods
+              readOnly: true
+            # The registry records how far each file was read. On a hostPath so a
+            # restarted pod resumes instead of re-shipping every log from the start.
+            - name: data
+              mountPath: /usr/share/filebeat/data
+      volumes:
+        - name: config
+          configMap:
+            name: {{ $name }}
+            defaultMode: 0640
+        - name: varlogcontainers
+          hostPath:
+            path: /var/log/containers
+        - name: varlogpods
+          hostPath:
+            path: /var/log/pods
+        - name: data
+          hostPath:
+            path: /var/lib/{{ $name }}-data
+            type: DirectoryOrCreate
+{{- end }}

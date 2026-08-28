@@ -81,7 +81,7 @@ A target stuck `DOWN` with `connection refused` means item 2 or 3 above is missi
 
 Its only input is `beats` on 5044 and the pipeline does **no** parsing — it forwards raw
 events to `logs-YYYY.MM.dd`. In compose, Filebeat fed it. There is **no Filebeat here**:
-container stdout is already collected by the platform's node-level agent, and a second
+container stdout may already be collected by a platform agent, in which case a second
 DaemonSet mounting the container runtime socket would duplicate logs and need
 root-on-node. So Logstash would start and sit idle.
 

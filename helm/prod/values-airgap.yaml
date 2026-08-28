@@ -6,9 +6,10 @@
 #     -f helm/prod/values-prod.yaml \
 #     -f helm/prod/values-airgap.yaml
 #
-# ┌─ REPLACE THIS ONE VALUE ───────────────────────────────────────────────────┐
-# │  registry.example.internal  ->  your internal registry host[:port]         │
-# │  (appears once under global.imageRegistry and once per Gravitee component)  │
+# ┌─ INTERNAL REGISTRY ────────────────────────────────────────────────────────┐
+# │  Set to 30.30.30.134:1111 — appears once under global.imageRegistry and     │
+# │  once per Gravitee component. Change them together, and keep them in step   │
+# │  with what mirror-images.sh actually pushed.                                │
 # └────────────────────────────────────────────────────────────────────────────┘
 #
 # There are TWO separate internet dependencies; this file only fixes the IMAGES.
@@ -22,13 +23,13 @@
 # os-shell tags used by sysctl / volume-permissions inits. Repository paths are
 # preserved, so the mirror must keep them (…/bitnamilegacy/mongodb, etc.).
 global:
-  imageRegistry: registry.example.internal
+  imageRegistry: "30.30.30.134:1111"
   # allowInsecureImages stays true — inherited from values-common.yaml. The Bitnami
   # image guard rejects "non-standard" repos, and a mirrored path is non-standard too.
   #
   # Uncomment if the internal registry needs auth. Create the secret first:
   #   kubectl -n gravitee create secret docker-registry regcred \
-  #     --docker-server=registry.example.internal \
+  #     --docker-server=30.30.30.134:1111 \
   #     --docker-username=<user> --docker-password=<pass>
   # imagePullSecrets:
   #   - regcred
@@ -40,28 +41,28 @@ global:
 # registry is reachable, so Always would also work — IfNotPresent is just cheaper.
 api:
   image:
-    repository: registry.example.internal/graviteeio/apim-management-api
+    repository: "30.30.30.134:1111/graviteeio/apim-management-api"
     tag: "4.11.6"
     pullPolicy: IfNotPresent
     # pullSecrets: regcred
 
 gateway:
   image:
-    repository: registry.example.internal/graviteeio/apim-gateway
+    repository: "30.30.30.134:1111/graviteeio/apim-gateway"
     tag: "4.11.6"
     pullPolicy: IfNotPresent
     # pullSecrets: regcred
 
 ui:
   image:
-    repository: registry.example.internal/graviteeio/apim-management-ui
+    repository: "30.30.30.134:1111/graviteeio/apim-management-ui"
     tag: "4.11.6"
     pullPolicy: IfNotPresent
     # pullSecrets: regcred
 
 portal:
   image:
-    repository: registry.example.internal/graviteeio/apim-portal-ui
+    repository: "30.30.30.134:1111/mohammadhsn/gravitee-portal-ui-fa"
     # ⚠️ Upstream ships this component as `:latest` only — an unpinnable moving target
     # with no version label, which is exactly what an air-gapped install must not have.
     # mirror-images.sh therefore retags it to 4.11.6 INSIDE the internal registry, which

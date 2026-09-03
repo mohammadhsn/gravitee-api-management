@@ -139,7 +139,7 @@ Open `https://console.example.com` in a browser. You should see the Gravitee Con
 
 ## 7. (If you also use Keycloak) update OIDC redirect URIs
 
-If you followed `keycloak-integration.en.md`, update the `gravitee-client` Keycloak client:
+If you followed the Keycloak setup in [`../en-gravitee-howto-guide.md`](../en-gravitee-howto-guide.md), update the `gravitee-client` Keycloak client:
 
 - **Valid Redirect URIs:** `https://console.example.com/*`, `https://portal.example.com/*`
 - **Web Origins:** `https://console.example.com`, `https://portal.example.com`

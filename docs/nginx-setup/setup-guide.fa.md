@@ -193,7 +193,7 @@ sudo nginx -t && sudo systemctl reload nginx
 
 ## ۷. (در صورت استفاده از Keycloak) به‌روزرسانی Redirect URIها
 
-اگر مطابق راهنمای `keycloak-integration.fa.md` پیش رفته‌اید، در کلاینت `gravitee-client` کیلوک این مقادیر را به‌روزرسانی کنید:
+اگر مطابق بخش Keycloak در [`../fa-gravitee-howto-guide.md`](../fa-gravitee-howto-guide.md) پیش رفته‌اید، در کلاینت `gravitee-client` کیلوک این مقادیر را به‌روزرسانی کنید:
 
 - **Valid Redirect URIs:** `https://console.example.com/*`, `https://portal.example.com/*`
 - **Web Origins:** `https://console.example.com`, `https://portal.example.com`

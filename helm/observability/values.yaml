@@ -19,7 +19,7 @@ global:
 ingress:
   enabled: true
   ingressClassName: nginx
-  host: apim.example.com
+  host: apim.apimsadr.org
   # Reuses the SAME TLS secret as the APIM ingresses — one cert, one host.
   tls:
     enabled: true
@@ -83,7 +83,14 @@ grafana:
 # gravitee-* analytics indices directly. Read-only consumer; adds no ingest load.
 kibana:
   enabled: true
-  image: docker.elastic.co/kibana/kibana:8.17.2
+  # PINNED TO 8.12.0 to match what the bare-metal registry actually serves. Elastic's
+  # own guidance is that Kibana should not be OLDER than Elasticsearch (ours is 8.17.4),
+  # and Kibana logs a compatibility warning about it on every boot. It works, but it is
+  # a known deviation -- realign both when the mirrored image can be updated.
+  #
+  # This tag also decides what the saved-objects provisioning hook runs in: the hook
+  # reuses this image, so its shell tooling must include curl.
+  image: docker.elastic.co/kibana/kibana:8.12.0
   path: /kibana
   # Import the data views + container-logs dashboard from helm/observability/kibana/*.ndjson
   # via a post-install hook. Kibana has no file-provisioning mechanism like Grafana's, so

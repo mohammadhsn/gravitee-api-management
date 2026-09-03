@@ -40,9 +40,15 @@ IMAGES=(
     # if you later switch it on inside the air gap where you cannot pull.
     "prom/prometheus:v2.53.2=prom/prometheus:v2.53.2"
     "grafana/grafana:11.3.1=grafana/grafana:11.3.1"
-    "docker.elastic.co/kibana/kibana:8.17.2=docker.elastic.co/kibana/kibana:8.17.2"
+    "docker.elastic.co/kibana/kibana:8.12.0=docker.elastic.co/kibana/kibana:8.12.0"
     "docker.elastic.co/logstash/logstash:8.17.2=docker.elastic.co/logstash/logstash:8.17.2"
     "docker.elastic.co/beats/filebeat:8.17.2=docker.elastic.co/beats/filebeat:8.17.2"
+    # ── Test backend (helm/test-backend/) ──
+    # Optional diagnostic fixture. Upstream only publishes ':latest', so it is retagged
+    # to 1.0.0 in the internal registry -- same reason as apim-portal-ui: an air-gapped
+    # install must not depend on a moving tag. Build it first with
+    # docker/quick-setup/keycloak/build-service-b.sh if it is not on the host.
+    "docker.io/mohammadhsn/service-b:latest=mohammadhsn/service-b:1.0.0"
 )
 
 src_of() { echo "${1%%=*}"; }

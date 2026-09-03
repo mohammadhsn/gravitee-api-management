@@ -82,10 +82,28 @@ spec:
                 # never see a failed curl -- an import that created nothing would report
                 # success. (And `set -o pipefail` is itself fatal here: dash rejects it,
                 # which crashloops the hook and makes helm hang until it times out.)
-                curl -sf -X POST "$KB/api/saved_objects/_import?overwrite=true" \
+                # NOT `curl -sf`. With -f, curl prints NOTHING on HTTP>=400 and exits
+                # non-zero, so `set -e` killed the script and the Job silently
+                # crash-looped -- every attempt logging only ">> importing ..." and
+                # then nothing. That hid a real 422 for a long time. Capture the body
+                # AND the status, print both, then decide.
+                code=$(curl -s -o /tmp/import.out -w '%{http_code}' \
+                  -X POST "$KB/api/saved_objects/_import?overwrite=true" \
                   -H 'kbn-xsrf: true' \
-                  -F "file=@$f"
-                echo
+                  -F "file=@$f") || true
+                echo "   http $code"
+                cat /tmp/import.out 2>/dev/null; echo
+                case "$code" in
+                  2*) : ;;
+                  *)
+                    echo ""
+                    echo "x import of $(basename "$f") failed with HTTP $code"
+                    echo "  A 422 mentioning 'a more recent version of Kibana' means these"
+                    echo "  objects were exported from a NEWER Kibana than this one. Kibana"
+                    echo "  never accepts saved objects from a newer version; they must be"
+                    echo "  re-exported from a Kibana matching the deployed image."
+                    exit 1 ;;
+                esac
               done
               echo ">> done"
           volumeMounts:

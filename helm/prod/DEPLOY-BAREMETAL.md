@@ -29,7 +29,7 @@ closed by different means.
 | # | Dependency | Who fetches it | Fix |
 |---|---|---|---|
 | 1 | Helm subcharts — Bitnami `elasticsearch` 22.0.13 + `mongodb` 16.5.45 from `charts.bitnami.com` | the **operator's** machine, at `helm dependency build` | ship a **packaged chart** that embeds them (A.1) |
-| 2 | Container images — 8 for APIM (`graviteeio/*`, `bitnamilegacy/*`), plus 4 more if you deploy the observability release | the **cluster's** kubelet/containerd, at pod start | mirror to an **internal registry** (A.2) |
+| 2 | Container images — 8 for APIM (`graviteeio/*`, `bitnamilegacy/*`), plus 5 for the observability release and 1 for the test backend if you deploy them | the **cluster's** kubelet/containerd, at pod start | mirror to an **internal registry** (A.2) |
 
 Note the split: #1 is never fetched by the cluster, so it does not need cluster egress — only the
 machine running `helm`. #2 is the one that genuinely requires the air-gap fix.
@@ -45,9 +45,10 @@ machine running `helm`. #2 is the one that genuinely requires the air-gap fix.
 helm dependency build helm/          # fetches the 2 subcharts into helm/charts/
 helm package helm/ -d ./dist         # -> ./dist/apim-4.11.0.tgz  (~363 KB, subcharts embedded)
 helm package helm/observability/ -d ./dist   # -> ./dist/gravitee-observability-0.1.0.tgz
+helm package helm/test-backend/  -d ./dist   # -> ./dist/gravitee-test-backend-0.1.0.tgz  (optional, §5c)
 ```
-The observability chart has no dependencies of its own, so packaging it is just for symmetry:
-both releases then install from a `.tgz` rather than one from a tgz and one from a source dir.
+Neither companion chart has dependencies of its own, so packaging them is just for symmetry:
+every release then installs from a `.tgz` rather than some from tgz and some from source dirs.
 Verify it is genuinely self-contained before carrying it in — render it with the repo config and
 cache pointed at empty dirs, so Helm *cannot* consult any repository:
 ```bash
@@ -68,8 +69,8 @@ on the inside** — it would try to reach the repo. Install from the `.tgz`, not
 
 ### A.2 — Mirror the images to an internal registry
 
-`helm/prod/mirror-images.sh` holds the complete image list (8 for APIM + 4 for the optional
-observability release) and handles the retagging.
+`helm/prod/mirror-images.sh` holds the complete image list (8 for APIM, 5 for the optional
+observability release, 1 for the optional test backend) and handles the retagging.
 Pick the mode that matches how isolated the cluster is:
 
 ```bash
@@ -151,7 +152,7 @@ kubectl run reg-probe --rm -it --restart=Never \
 ## 1. Fill the placeholders (set once, reused by every command below)
 
 ```bash
-export HOST=apim.example.com                 # your real API/console hostname
+export HOST=apim.apimsadr.org                 # your real API/console hostname
 export TLS_SECRET=apim-tls                    # k8s secret holding the cert for $HOST
 export NS=gravitee
 export SC=""                                  # "" = cluster default; else your node-local SC name
@@ -159,7 +160,7 @@ export KUBE=""                                # optional: "--kube-context <prod-
 export INGRESS_CLASS=nginx                    # ← CONFIRM in §2; may not be "nginx" on this cluster
 export INGRESS_NS=ingress-nginx               # ← CONFIRM in §2; platform may use another namespace
 ```
-Edit `helm/prod/values-prod.yaml`: replace every `apim.example.com` with `$HOST`, and every
+Edit `helm/prod/values-prod.yaml`: replace every `apim.apimsadr.org` with `$HOST`, and every
 `ingressClassName: nginx` with `$INGRESS_CLASS` (5 places — api.management, api.portal, gateway, ui,
 portal). If `$SC` is not the cluster default, uncomment `persistence.storageClass` under `mongodb`
 and `elasticsearch.master`.
@@ -250,7 +251,51 @@ EOF
 kubectl $KUBE -n $NS wait --for=condition=Ready certificate/apim-tls --timeout=180s
 ```
 
-**Option B — bring your own cert.**
+**Option B — bring your own cert. ← this deployment uses this.**
+
+The supplied bundle is in `certs/` (gitignored — it holds a private key). It is the
+standard certbot layout, already verified:
+
+| File | Contents | Use |
+|---|---|---|
+| `cert1.pem` | leaf only | ✗ do NOT use — see below |
+| `chain1.pem` | intermediate only | reference |
+| **`fullchain1.pem`** | **leaf + intermediate, leaf first** | ✅ this is `tls.crt` |
+| **`privkey1.pem`** | RSA 2048, unencrypted | ✅ this is `tls.key` |
+
+```bash
+kubectl $KUBE -n $NS create secret tls $TLS_SECRET \
+  --cert=certs/fullchain1.pem \
+  --key=certs/privkey1.pem
+```
+
+⚠️ **Use `fullchain1.pem`, not `cert1.pem`.** `cert1.pem` is leaf-only; ingress-nginx
+serves exactly the bytes you give it and does not complete the chain. Browsers holding a
+cached intermediate would look fine while `curl` and Java clients fail with
+`unable to get local issuer certificate` — an intermittent, per-client failure that is
+miserable to diagnose.
+
+What was checked on this bundle:
+- key matches cert (public-key hashes identical)
+- key is unencrypted (`BEGIN PRIVATE KEY`) — required, nothing can prompt for a passphrase
+- `extendedKeyUsage: TLS Web Server Authentication`
+- SAN `DNS:*.apimsadr.org`, issued by `sadr Intermediate CA` -> `sadr Root CA`
+- `fullchain1.pem` holds 2 certs in the correct order
+
+Two properties worth knowing: the **Subject is empty** (identity is carried solely by the
+SAN — fine for modern clients, occasionally awkward for old Java ones), and the validity
+span is **~246 years**, which is unusual and means there is no renewal forcing-function.
+Private CAs are exempt from the 398-day browser limit, so neither blocks anything.
+
+**Still needed: the root CA certificate** (`sadr Root CA`). It is correctly absent from
+the bundle — roots are never sent on the wire — but you need it in two places:
+clients must trust it for a clean padlock (probably already distributed corporately), and
+**the gateway's truststore** if any API backend is HTTPS signed by the same CA. Without
+it there, the gateway rejects the backend and returns a fast 502 — indistinguishable at a
+glance from the DNS failure in §5c.
+
+*Generic instructions follow, for a different cert.*
+
 
 `kubectl create secret tls` does no validation beyond "is this PEM" — a cert that is missing its
 intermediates, or whose SAN omits `$HOST`, creates a perfectly healthy-looking secret that then
@@ -448,6 +493,63 @@ is not acceptable.
 
 ---
 
+## 5c. Test backend — OPTIONAL (diagnosing gateway 502s)
+
+A known-good in-cluster HTTP backend plus a network diagnostic shell. Deploy it when the
+gateway returns 502 for an API and you need to tell "this API's endpoint is wrong" apart
+from "the gateway cannot reach anything at all". Skip it on a healthy install, and
+uninstall it when done -- it is a fixture, not a component.
+
+```bash
+# air-gapped: build + mirror it first (it is in mirror-images.sh)
+docker/quick-setup/keycloak/build-service-b.sh
+helm/prod/mirror-images.sh mirror <registry>
+
+helm install testbackend ./dist/gravitee-test-backend-0.1.0.tgz -n $NS $KUBE \
+  --set global.imageRegistry=<registry>       # omit if the cluster has egress
+```
+
+**Use 1 — is the gateway's OUTBOUND path working at all?**
+```bash
+kubectl $KUBE -n $NS exec deploy/apim-gateway -- \
+  curl -s -m 10 -w '\n%{http_code} in %{time_total}s\n' \
+  http://testbackend-test-backend:5000/health
+```
+`{"status":"healthy"}` + `200` means the gateway can egress and resolve in-cluster names,
+so a 502 on a real API is that API's endpoint configuration. If this ALSO fails, the
+problem is the gateway or cluster networking, and no amount of endpoint-fixing will help.
+
+Then point a throwaway Gravitee API at `http://testbackend-test-backend:5000/health` and
+call it through the gateway. That exercises the full path with a backend that cannot be
+the variable.
+
+**Use 2 — DNS and reachability FROM INSIDE the cluster.** This is the part that matters:
+what resolves from your laptop is not what the gateway sees. The image carries `curl`,
+`dig`, `nslookup`, `ping`, `netstat` and `route`.
+```bash
+TB=$(kubectl $KUBE -n $NS get pod -l app.kubernetes.io/name=testbackend-test-backend -o name | head -1)
+
+# does the failing API's backend hostname resolve in-cluster?
+kubectl $KUBE -n $NS exec $TB -- dig +short <backend-host>
+
+# ...and is it reachable?
+kubectl $KUBE -n $NS exec $TB -- curl -sv -o /dev/null -m 5 <full-backend-url>
+```
+Empty `dig` output = NXDOMAIN, the name does not exist for the gateway either.
+`Connection refused` = wrong port or nothing listening. Both produce a FAST gateway 502
+(tens of ms); a slow 502 points at a timeout instead.
+
+Remove it when finished:
+```bash
+helm uninstall testbackend -n $NS $KUBE
+```
+
+⚠️ `/protected` on this image does not work and is left unwired: it validates JWTs
+against a Keycloak that is not in this cluster, and the published image ignores
+`KEYCLOAK_ISSUER_URL` regardless. Use `/health`.
+
+---
+
 ## 6. Watch it come up
 
 ```bash
@@ -522,6 +624,10 @@ kubectl $KUBE -n $NS describe pod <pod>            # events (scheduling, pull, p
 kubectl $KUBE -n $NS logs deploy/apim-api --tail=200 | grep -iE 'error|mongo|elasticsearch'
 kubectl $KUBE -n $NS get events --sort-by=.lastTimestamp | tail -20
 ```
+
+If pods are healthy but the gateway returns **502** for an API, the fault is on its
+OUTBOUND side -- the gateway reaching your backend -- not here. Deploy the test backend
+in §5c to tell an unreachable backend apart from a gateway that cannot egress at all.
 
 ---
 

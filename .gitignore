@@ -68,3 +68,6 @@ CLAUDE.md
 
 # Local env for the keycloak quick-setup demo (template: .env.dist)
 docker/quick-setup/keycloak/.env
+
+# TLS material for the bare-metal deploy (contains a PRIVATE KEY — never commit)
+certs/

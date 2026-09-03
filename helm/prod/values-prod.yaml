@@ -22,13 +22,17 @@
 # TLS terminates at the ingress-nginx controller (the platform's MetalLB provides its L4
 # VIP; nginx does HTTPS + L7 routing). All five ingresses share one certificate in the
 # secret `apim-tls`, which lives in OUR namespace. It must EXIST before/at deploy:
-#   - cert-manager: create ONE Certificate CR for host apim.example.com -> secret apim-tls
+#   - cert-manager: create ONE Certificate CR for host apim.apimsadr.org -> secret apim-tls
 #     (do NOT scatter cert-manager.io/cluster-issuer across all 5 ingresses — they would
 #      each spawn a Certificate fighting over the same secret). Or:
 #   - pre-provisioned: kubectl -n gravitee create secret tls apim-tls --cert=... --key=...
 #
-# ┌─ BEFORE DEPLOYING, replace these placeholders ─────────────────────────────┐
-# │  apim.example.com   -> your real prod host (appears in URLs + all ingresses)│
+# ┌─ BEFORE DEPLOYING, check these ────────────────────────────────────────────┐
+# │  apim.apimsadr.org  -> SET. Covered by the wildcard SAN *.apimsadr.org on   │
+# │     the supplied cert. Wildcards match exactly ONE label, so a different    │
+# │     host must also be single-label (gateway.apimsadr.org ok; the apex       │
+# │     apimsadr.org and a.b.apimsadr.org are NOT covered). Needs a DNS A       │
+# │     record pointing at the platform's ingress VIP (see runbook §3).         │
 # │  apim-tls           -> a TLS secret for that host (cert-manager or manual)  │
 # │  persistence.storageClass (commented) -> your cluster's node-local SC, or   │
 # │     leave commented to use the cluster default StorageClass                 │
@@ -42,16 +46,16 @@
 # is https and same-origin with the browser's address bar.
 installation:
   api:
-    url: https://apim.example.com
+    url: https://apim.apimsadr.org
   standalone:
     console:
       urls:
         - orgId: DEFAULT
-          url: https://apim.example.com/console
+          url: https://apim.apimsadr.org/console
     portal:
       urls:
         - envId: DEFAULT
-          url: https://apim.example.com/devportal
+          url: https://apim.apimsadr.org/devportal
 
 # ── MongoDB — 1-member replica set (single-node), production disk/resources ───
 mongodb:
@@ -105,7 +109,7 @@ api:
   # portalURL is the one hardcoded-https spot with a value hook (api-configmap uses
   # api.portalURL verbatim when set); the other four were patched to honor ingress
   # scheme. Plain http for the internal edge.
-  portalURL: https://apim.example.com
+  portalURL: https://apim.apimsadr.org
   resources:
     requests: { cpu: 500m, memory: 1Gi }
     limits:   { cpu: 2,    memory: 2Gi }
@@ -114,17 +118,17 @@ api:
       ingressClassName: nginx
       scheme: https
       hosts:
-        - apim.example.com
+        - apim.apimsadr.org
       tls:
-        - hosts: [apim.example.com]
+        - hosts: [apim.apimsadr.org]
           secretName: apim-tls
     portal:
       ingressClassName: nginx
       scheme: https
       hosts:
-        - apim.example.com
+        - apim.apimsadr.org
       tls:
-        - hosts: [apim.example.com]
+        - hosts: [apim.apimsadr.org]
           secretName: apim-tls
 
 gateway:
@@ -141,9 +145,9 @@ gateway:
     # portal.entrypoint); https now that TLS terminates at the ingress controller.
     scheme: https
     hosts:
-      - apim.example.com
+      - apim.apimsadr.org
     tls:
-      - hosts: [apim.example.com]
+      - hosts: [apim.apimsadr.org]
         secretName: apim-tls
     # Data-plane tuning: the gateway proxies real API traffic, so lift nginx's 1 MB
     # body cap and stretch timeouts for streaming / SSE / WebSocket / long-poll APIs.
@@ -159,15 +163,15 @@ ui:
     tag: "4.11.6"
     pullPolicy: IfNotPresent
   # Console SPA calls the management API here (plain http, real host, standard port).
-  baseURL: https://apim.example.com/management/
+  baseURL: https://apim.apimsadr.org/management/
   ingress:
     ingressClassName: nginx
     # scheme feeds the patched portalURL derivation (api-configmap uses ui host).
     scheme: https
     hosts:
-      - apim.example.com
+      - apim.apimsadr.org
     tls:
-      - hosts: [apim.example.com]
+      - hosts: [apim.apimsadr.org]
         secretName: apim-tls
   resources:
     requests: { cpu: 50m, memory: 128Mi }
@@ -178,7 +182,7 @@ portal:
   image:
     tag: "latest"
     pullPolicy: IfNotPresent
-  baseURL: https://apim.example.com/portal
+  baseURL: https://apim.apimsadr.org/portal
   # ── Portal API URL: RELATIVE, on purpose ─────────────────────────────────────
   # The Portal SPA reads PORTAL_API_URL at container start. The chart builds that env
   # var as an ABSOLUTE url from api.ingress.portal (scheme://host/path/), and NOT from
@@ -209,9 +213,9 @@ portal:
     pathType: ImplementationSpecific
     path: /devportal(/.*)?
     hosts:
-      - apim.example.com
+      - apim.apimsadr.org
     tls:
-      - hosts: [apim.example.com]
+      - hosts: [apim.apimsadr.org]
         secretName: apim-tls
     annotations:
       nginx.ingress.kubernetes.io/rewrite-target: /$1

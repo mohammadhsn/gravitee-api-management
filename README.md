@@ -23,6 +23,69 @@
 [![Documentation][docs-badge]][docs-url]
 ---
 
+<!-- ─────────────────────────── FORK SECTION ───────────────────────────
+     Everything between these markers is specific to this fork. Upstream's
+     README follows unchanged below. Kept in one contiguous block on purpose:
+     an upstream merge then conflicts here and nowhere else.
+     ──────────────────────────────────────────────────────────────────── -->
+
+## About this fork
+
+This is a fork of [gravitee-io/gravitee-api-management](https://github.com/gravitee-io/gravitee-api-management)
+carrying our own deployment of APIM — Keycloak as the identity provider, a TLS
+edge, observability, and a production bare-metal install. **Our documentation is
+indexed in [`docs/README.md`](docs/README.md) — start there.**
+
+### The big picture
+
+APIM is four services over two datastores:
+
+| Component | Port | Role |
+| --- | --- | --- |
+| **Gateway** | `8082` | The data plane. Proxies real API traffic and enforces policies (auth, rate limits, transforms). |
+| **Management API** | `8083` | The control plane. Owns API definitions, plans, subscriptions and users; serves both UIs. |
+| **Console UI** | `8084` | Admin interface — where APIs are designed, published and monitored. |
+| **Portal UI** | `4100` | Developer portal — where consumers discover APIs and request access. |
+| MongoDB | — | API definitions, subscriptions, users. The system of record. |
+| Elasticsearch | — | Request analytics and logs. Written directly by the Gateway's reporter. |
+
+**The one thing worth knowing up front:** the Gateway and the Management API
+never call each other. The Management API writes to an *events* table, and each
+Gateway polls it roughly every 5 seconds and reconfigures itself. So a change
+made in the Console is not live until that sync happens, and if a deploy seems
+not to take effect, that table is where to look. Treat it as the contract
+between the two planes.
+
+What this fork adds on top:
+
+- **Keycloak** as the OIDC provider for console/portal login and for
+  service-to-service tokens on proxied APIs.
+- **A single TLS origin** — nginx (compose) or ingress-nginx (Kubernetes)
+  terminating HTTPS and serving every component under one hostname, which is
+  what keeps the browser's same-origin rules satisfied.
+- **Observability** — Prometheus and Grafana for metrics, Kibana for request
+  analytics and gateway logs, shipped by Filebeat and Logstash.
+- **An air-gapped production install** on bare-metal Kubernetes, with every
+  image mirrored to an internal registry and TLS from an internal CA.
+
+### Where to run it
+
+| If you want to… | Use |
+| --- | --- |
+| See the whole stack working locally | [`docker/quick-setup/keycloak/`](docker/quick-setup/keycloak/README.md) — the full demo on docker compose |
+| Isolate one component | `cd docker && make help` — ~25 single-concern stacks (upstream's) |
+| Rehearse a production change | [`helm/kind/`](helm/kind/) — a local cluster mirroring the prod topology |
+| Deploy to production | [`helm/prod/DEPLOY-BAREMETAL.md`](helm/prod/DEPLOY-BAREMETAL.md) — the authoritative runbook |
+| Run on a single VM, no Kubernetes | [`docs/nginx-setup/setup-guide.en.md`](docs/nginx-setup/setup-guide.en.md) |
+
+Guides exist in English and Persian as hand-maintained pairs; see
+[`docs/README.md`](docs/README.md) for the full list and for which documents are
+ours versus upstream's.
+
+<!-- ───────────────────────── END FORK SECTION ───────────────────────── -->
+
+---
+
 <span style="color:#ea3527"><strong>Gravitee API Management</strong></span> (also called <span style="color:#ea3527"><strong>Gravitee APIM</strong></span>)
 is a flexible, lightweight, and blazing-fast Open Source solution that helps your organization control who, when, and how users access your APIs. \
 Effortlessly manage the lifecycle of your APIs.

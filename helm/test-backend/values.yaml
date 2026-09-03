@@ -1,0 +1,73 @@
+# Test backend — defaults.
+#
+# Install into the SAME namespace as the apim release, so the gateway can reach it by
+# its short service name:
+#
+#   helm install testbackend helm/test-backend/ -n gravitee
+#
+# WHAT THIS IS FOR
+# Two jobs, both aimed at the gateway's OUTBOUND path -- the direction that is hardest
+# to debug and the one that produces a 502 from the gateway itself:
+#
+#   1. a known-good backend. Point a Gravitee API at http://<svc>:5000/health and you
+#      have a target that cannot be the variable. If that API works and a real one does
+#      not, the fault is in the real one's endpoint config, not the gateway or the
+#      cluster network. If it ALSO fails, the gateway cannot egress at all -- a much
+#      bigger finding, and one worth knowing before chasing endpoint URLs.
+#
+#   2. a diagnostic shell. The image ships curl, dig, ping, netstat and route, so
+#      `kubectl exec` into it and you can test DNS and reachability FROM inside the
+#      cluster's network namespace -- which is what actually matters, not what resolves
+#      from your laptop. See the README for the exact commands.
+#
+# ⚠️ NOT for production traffic. It is a diagnostic fixture: uninstall it when done.
+
+# ── Air-gap: set this and the image is pulled from your registry ──────────────
+# Mirror it with helm/prod/mirror-images.sh (it is in the image list).
+global:
+  imageRegistry: ""          # e.g. 30.30.30.134:1111
+
+image:
+  # Built from docker/quick-setup/keycloak/ via ./build-service-b.sh.
+  # Upstream only ever produced a ':latest' tag; mirror-images.sh retags it to 1.0.0 in
+  # the internal registry so an air-gapped install is reproducible -- the same treatment
+  # apim-portal-ui gets, and for the same reason. Keep this pinned.
+  repository: mohammadhsn/service-b
+  tag: "1.0.0"
+  pullPolicy: IfNotPresent
+
+replicaCount: 1
+
+service:
+  type: ClusterIP
+  port: 5000
+
+# The app is Flask on 5000 with two routes:
+#   /health     unauthenticated  -> {"status":"healthy"}   <- use this one
+#   /protected  requires a Keycloak-issued JWT
+#
+# /protected CANNOT work here: it validates tokens by fetching JWKS from a Keycloak that
+# does not exist in this cluster, and the published image additionally ignores
+# KEYCLOAK_ISSUER_URL (a known defect carried over from the compose stack), so it 401s
+# even where Keycloak IS present. Left disabled rather than half-wired.
+keycloak:
+  enabled: false
+  # issuerUrl: https://keycloak.example.com/auth
+  # url: http://keycloak:8080
+  # realm: master
+
+resources:
+  requests: { cpu: 25m,  memory: 64Mi }
+  limits:   { cpu: 200m, memory: 256Mi }
+
+# Optional: expose /health through the shared ingress for a browser check. Off by
+# default -- the gateway reaches this over the pod network and needs no ingress, and
+# publishing a diagnostic fixture at the edge is not something to do by accident.
+ingress:
+  enabled: false
+  ingressClassName: nginx
+  host: apim.apimsadr.org
+  path: /testbackend
+  tls:
+    enabled: true
+    secretName: apim-tls

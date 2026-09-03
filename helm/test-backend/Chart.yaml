@@ -1,0 +1,10 @@
+apiVersion: v2
+name: gravitee-test-backend
+description: >-
+  A known-good in-cluster HTTP backend for validating the Gravitee gateway's OUTBOUND
+  path, plus a network diagnostic shell (curl/dig/ping/netstat) for testing reachability
+  from inside the cluster. Deployed as its own release so it can be removed cleanly.
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+keywords: [gravitee, test, diagnostics]
